@@ -2,7 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { parse } from 'csv-parse/sync';
 import { PrismaService } from '../common/prisma.service';
 
-const autoMap: Record<string, string> = { nom:'title',name:'title',product_name:'title',titre:'title',title:'title',nom_produit:'title',description:'description',description_longue:'description',body:'description',body_html:'description',price:'price',prix:'price',prix_ttc:'price',sku:'sku',reference:'sku','référence':'sku',brand:'brand',marque:'brand',vendor:'vendor',fournisseur:'vendor',category:'category',categorie:'category','catégorie':'category',product_type:'productType',type:'productType',url:'url',url_fiche:'url',link:'url',image:'imageUrls',image_url:'imageUrls',imageurls:'imageUrls',ean:'gtin',ean13:'gtin',gtin:'gtin',barcode:'gtin',stock:'availability',availability:'availability','disponibilité':'availability',tags:'tags',tag:'tags',mots_cles:'tags','mots-clés':'tags',seo_title:'seoTitle',titre_seo:'seoTitle',meta_description:'metaDescription',description_seo:'metaDescription' };
+const autoMap: Record<string, string> = { nom:'title',name:'title',product_name:'title',titre:'title',title:'title',nom_produit:'title',description:'description',price:'price',prix:'price',sku:'sku',reference:'sku',brand:'brand',marque:'brand',category:'category',categorie:'category',product_type:'productType',url:'url',link:'url',image:'imageUrls',image_url:'imageUrls',ean:'gtin',gtin:'gtin',stock:'availability',availability:'availability',tags:'tags',seo_title:'seoTitle',meta_description:'metaDescription',currency:'currency' };
+
 @Injectable()
 export class CsvService {
   constructor(private readonly prisma: PrismaService) {}

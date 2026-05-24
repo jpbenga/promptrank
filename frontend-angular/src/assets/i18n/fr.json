@@ -1,1 +1,13 @@
-{"app":{"title":"PromptRank"},"home":{"description":"Importez vos produits CSV et normalisez-les."}}
+{
+  "app": {"title":"PromptRank"},
+  "nav":{"home":"Accueil","newProject":"Créer un projet"},
+  "home":{"description":"Importez un CSV produit et normalisez les données.","ctaCreateProject":"Créer un projet"},
+  "common":{"create":"Créer"},
+  "states":{"loading":"Chargement...","empty":"Aucune donnée disponible."},
+  "projectCreate":{"title":"Nouveau projet CSV","name":"Nom du projet"},
+  "csvUpload":{"title":"Upload CSV","submit":"Téléverser"},
+  "csvPreview":{"title":"Aperçu CSV","delimiter":"Séparateur détecté","columns":"Colonnes","continue":"Continuer vers mapping"},
+  "csvMapping":{"title":"Mapping des colonnes","save":"Enregistrer le mapping","import":"Importer les produits"},
+  "products":{"title":"Produits normalisés","columns":{"title":"Titre","sku":"SKU","brand":"Marque","category":"Catégorie","price":"Prix","currency":"Devise","availability":"Disponibilité","url":"URL"}},
+  "errors":{"CSV_INVALID_FILE_TYPE":"Type de fichier invalide. Utilisez un fichier CSV.","CSV_FILE_TOO_LARGE":"Fichier trop volumineux.","CSV_PARSE_ERROR":"Erreur de lecture CSV.","CSV_EMPTY_FILE":"Le fichier CSV est vide.","CSV_NO_COLUMNS_FOUND":"Aucune colonne détectée.","CSV_MAPPING_MISSING_TITLE":"Le champ title est obligatoire.","PROJECT_NOT_FOUND":"Projet introuvable.","PRODUCT_IMPORT_FAILED":"Échec de l'import produit.","UNKNOWN":"Une erreur inattendue est survenue."}
+}
