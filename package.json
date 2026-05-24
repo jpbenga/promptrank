@@ -1,0 +1,21 @@
+{
+  "name": "promptrank",
+  "private": true,
+  "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter @promptrank/api dev\" \"pnpm --filter @promptrank/web dev\"",
+    "dev:api": "pnpm --filter @promptrank/api dev",
+    "dev:web": "pnpm --filter @promptrank/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "db:generate": "pnpm --filter @promptrank/api prisma:generate",
+    "db:migrate": "pnpm --filter @promptrank/api prisma:migrate"
+  },
+  "devDependencies": {
+    "concurrently": "9.1.2"
+  }
+}

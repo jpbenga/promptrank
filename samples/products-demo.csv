@@ -1,0 +1,6 @@
+nom_produit;description_longue;prix_ttc;sku;marque;categorie;url_fiche;stock;ean13;image_url;mots_cles
+Gourde inox 750 ml;Gourde isotherme en acier inoxydable 750 ml;24,90;GOU-750-INOX;HydraPlus;Hydratation;https://example.com/gourde-750;disponible;3760123456789;https://example.com/images/gourde.jpg;gourde;inox;isotherme
+Lampe LED bureau;Lampe LED orientable intensité variable;39,99;LAMP-LED-001;LumiDesk;Maison;https://example.com/lampe-led;in stock;3760123456796;https://example.com/images/lampe.jpg;lampe;led;bureau
+Sac de voyage cabine;Sac cabine 40L compatible avion;59,00;SAC-CAB-40;TravelGo;Bagagerie;https://example.com/sac-cabine;1;3760123456703;https://example.com/images/sac.jpg;sac;voyage;cabine
+Tapis de yoga antidérapant;Tapis 6mm mousse haute densité;29.50;YOGA-MAT-6;ZenMove;Fitness;https://example.com/tapis-yoga;available;3760123456710;https://example.com/images/tapis.jpg;yoga;tapis;fitness
+Montre sport connectée;Montre GPS cardio multisport;129,90;WATCH-SPT-01;RunTech;Wearables;https://example.com/montre-sport;preorder;3760123456727;https://example.com/images/montre.jpg;montre;sport;gps

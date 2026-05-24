@@ -1,0 +1,4 @@
+packages:
+  - backend-nest
+  - frontend-angular
+  - shared-types
