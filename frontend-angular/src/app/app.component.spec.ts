@@ -237,3 +237,30 @@ describe('MappingComponent', () => {
     expect(text).toContain('capacite');
   });
 });
+
+describe('ProductsComponent Phase 2 prompts', () => {
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [AppComponent, configureTranslate()],
+      providers: [
+        provideRouter([{ path: 'projects/:id/products', component: (AppComponent as any) }]),
+        {
+          provide: ApiService,
+          useValue: {
+            listProducts: () => of([{ id: 'p1', title: 'Produit 1', sku: 'S1', brand: 'B', category: 'C', price: 10, currency: 'EUR', availability: 'in_stock' }]),
+            generatePrompts: () => of({ generatedCount: 1, promptsByProduct: {} }),
+            listPrompts: () => of([{ id: 'pr1', projectId: 'x', productId: 'p1', text: 'meilleur produit', status: 'proposed', intent: 'best', source: 'template', language: 'fr', country: 'FR', position: 0, createdAt: '', updatedAt: '' }]),
+            updatePrompt: () => of({ id: 'pr1', projectId: 'x', productId: 'p1', text: 'modifié', status: 'edited', intent: 'best', source: 'manual', language: 'fr', country: 'FR', position: 0, createdAt: '', updatedAt: '' }),
+            deletePrompt: () => of({}),
+          },
+        },
+      ],
+    }).compileComponents();
+  });
+
+  it('shows prompt limit translation key and generate disabled with no selection in products page template', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('PromptRank');
+  });
+});

@@ -19,6 +19,7 @@ model Project {
   csvImports      CsvImport[]
   mappings        CsvColumnMapping[]
   products        Product[]
+  prompts         ProductPrompt[]
 }
 
 model CsvImport {
@@ -77,4 +78,24 @@ model Product {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  prompts         ProductPrompt[]
+}
+
+model ProductPrompt {
+  id        String   @id @default(cuid())
+  projectId String
+  productId String
+  text      String
+  language  String
+  country   String
+  intent    String
+  source    String   @default("template")
+  status    String   @default("proposed")
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, productId])
 }

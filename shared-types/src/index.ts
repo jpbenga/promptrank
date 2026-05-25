@@ -56,3 +56,39 @@ export type CsvImportPreview = {
 };
 
 export type CsvColumnMapping = Record<string, keyof Omit<NormalizedProduct, 'id' | 'rawSource'>>;
+
+export type PromptIntent = 'best' | 'cheap' | 'alternative' | 'use_case' | 'comparison' | 'problem_solution' | 'gift' | 'local';
+export type PromptStatus = 'proposed' | 'edited' | 'disabled';
+export type PromptSource = 'template' | 'manual';
+
+export type ProductPrompt = {
+  id: string;
+  projectId: string;
+  productId: string;
+  text: string;
+  language: string;
+  country: string;
+  intent: PromptIntent;
+  source: PromptSource;
+  status: PromptStatus;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GeneratePromptsRequest = {
+  productIds: string[];
+  promptsPerProduct?: number;
+  language?: string;
+  country?: string;
+};
+
+export type GeneratePromptsResponse = {
+  promptsByProduct: Record<string, ProductPrompt[]>;
+  generatedCount: number;
+};
+
+export type UpdatePromptRequest = {
+  text?: string;
+  status?: PromptStatus;
+};

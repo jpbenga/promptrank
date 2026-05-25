@@ -14,7 +14,9 @@
   "common": {
     "back": "Back",
     "backHome": "Back home",
-    "create": "Create"
+    "create": "Create",
+    "save": "Save",
+    "delete": "Delete"
   },
   "steps": {
     "home": "Home",
@@ -234,6 +236,39 @@
     "CSV_MAPPING_MISSING_TITLE": "The title field is required.",
     "PROJECT_NOT_FOUND": "Project not found.",
     "PRODUCT_IMPORT_FAILED": "Product import failed.",
-    "UNKNOWN": "An unexpected error occurred."
+    "UNKNOWN": "An unexpected error occurred.",
+    "PROMPT_GENERATION_LIMIT_EXCEEDED": "Prompt generation limit exceeded.",
+    "PROMPT_GENERATION_NO_PRODUCTS": "No product selected.",
+    "PRODUCT_NOT_FOUND": "Product not found.",
+    "PROMPT_NOT_FOUND": "Prompt not found.",
+    "PROMPT_UPDATE_INVALID": "Invalid prompt update."
+  },
+  "prompts": {
+    "title": "Prompts",
+    "generate": "Generate prompts",
+    "limit": "Local/demo limits",
+    "limitDetail": "Maximum {{maxProducts}} products / {{promptsPerProduct}} prompts per product",
+    "empty": "No prompts generated yet.",
+    "updateSuccess": "Prompt updated.",
+    "deleteSuccess": "Prompt disabled.",
+    "status": {
+      "proposed": "proposed",
+      "edited": "edited",
+      "disabled": "disabled"
+    },
+    "source": {
+      "template": "template",
+      "manual": "manual"
+    },
+    "intent": {
+      "best": "best",
+      "cheap": "cheap",
+      "alternative": "alternative",
+      "use_case": "use case",
+      "comparison": "comparison",
+      "problem_solution": "problem/solution",
+      "gift": "gift",
+      "local": "local"
+    }
   }
 }
