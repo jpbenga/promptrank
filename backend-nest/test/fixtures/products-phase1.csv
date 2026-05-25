@@ -1,0 +1,9 @@
+nom_produit;description_longue;prix_ttc;sku;marque;categorie;url_fiche;stock;ean13;image_url;mots_cles;couleur;matiere;capacite
+Gourde inox 750 ml;Gourde isotherme en acier inoxydable 750 ml;24,90;GOU-750-INOX;HydraPlus;Hydratation;https://example.com/gourde-750;disponible;3760123456789;https://example.com/images/gourde.jpg;"gourde;inox;isotherme";bleu;acier inoxydable;750 ml
+Lampe LED bureau;"Lampe LED orientable, intensité variable";39.99;LAMP-LED-001;LumiDesk;Maison;https://example.com/lampe-led;in stock;3760123456796;https://example.com/images/lampe.jpg;"lampe;led;bureau";noir;aluminium;-
+Sac de voyage cabine;Sac cabine 40L compatible avion;59,00;SAC-CAB-40;TravelGo;Bagagerie;https://example.com/sac-cabine;1;3760123456703;https://example.com/images/sac.jpg;"sac;voyage;cabine";gris;polyester;40 L
+Tapis de yoga antidérapant;Tapis 6mm mousse haute densité;29.50;YOGA-MAT-6;ZenMove;Fitness;https://example.com/tapis-yoga;available;3760123456710;https://example.com/images/tapis.jpg;"yoga;tapis;fitness";vert;mousse;6 mm
+Montre sport connectée;Montre GPS cardio multisport;129,90;WATCH-SPT-01;RunTech;Wearables;https://example.com/montre-sport;preorder;3760123456727;https://example.com/images/montre.jpg;"montre;sport;gps";bleu;silicone;-
+Casque audio nomade;Casque Bluetooth réduction de bruit;89,95;CASQUE-BT-02;SoundWay;Audio;https://example.com/casque-audio;out_of_stock;3760123456734;https://example.com/images/casque.jpg;"casque;audio;bluetooth";blanc;plastique;-
+Mug céramique artisanal;Mug émaillé fabriqué en France;18.75;MUG-CER-01;Atelier Nord;Cuisine;https://example.com/mug-ceramique;oui;3760123456741;https://example.com/images/mug.jpg;"mug;céramique;café";rouge;céramique;330 ml
+Chaussures running route;Chaussures légères pour entraînement quotidien;74,20;RUN-SHOE-42;FleetRun;Sport;https://example.com/chaussures-running;unavailable;3760123456758;https://example.com/images/shoes.jpg;"running;chaussures;sport";orange;textile;42

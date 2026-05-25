@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import type { NormalizedProduct } from '@promptrank/shared-types';
 import { PrismaService } from '../common/prisma.service';
-import { NormalizedProduct } from '../../../shared-types/src';
 
 @Injectable()
 export class ProductsService { constructor(private readonly prisma: PrismaService){}
-normalizeAvailability(value?:string): NormalizedProduct['availability'] {const v=(value||'').toLowerCase(); if(['in stock','instock','1','true','available','disponible'].includes(v)) return 'in_stock'; if(['out of stock','outofstock','0','false','unavailable'].includes(v)) return 'out_of_stock'; if(['preorder','pre-order'].includes(v)) return 'preorder'; return 'unknown';}
+normalizeAvailability(value?:string): NormalizedProduct['availability'] {const v=(value||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[_-]+/g,' ').replace(/\s+/g,' '); if(['in stock','instock','1','true','available','disponible','oui'].includes(v)) return 'in_stock'; if(['out of stock','outofstock','0','false','unavailable','indisponible','non'].includes(v)) return 'out_of_stock'; if(['preorder','pre order','precommande'].includes(v)) return 'preorder'; return 'unknown';}
 parsePrice(value?:string){ if(!value) return undefined; const normalized=value.replace(',', '.').replace(/[^0-9.]/g,''); const n=Number(normalized); return Number.isFinite(n)?n:undefined; }
 toArray(value?:string){ if(!value) return undefined; return value.split(/[;,|]/).map(v=>v.trim()).filter(Boolean); }
 async import(projectId:string){ try {

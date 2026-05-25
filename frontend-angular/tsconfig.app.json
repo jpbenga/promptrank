@@ -1,1 +1,14 @@
-{"compilerOptions":{"outDir":"./out-tsc/app","strict":true,"types":[]},"files":["src/main.ts"],"include":["src/**/*.d.ts"]}
+{
+  "compilerOptions": {
+    "outDir": "./out-tsc/app",
+    "strict": true,
+    "types": [],
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "useDefineForClassFields": false,
+    "lib": ["ES2022", "DOM"]
+  },
+  "files": ["src/main.ts"],
+  "include": ["src/**/*.d.ts"]
+}

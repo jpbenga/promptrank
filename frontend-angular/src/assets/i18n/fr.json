@@ -1,13 +1,239 @@
 {
-  "app": {"title":"PromptRank"},
-  "nav":{"home":"Accueil","newProject":"Créer un projet"},
-  "home":{"description":"Importez un CSV produit et normalisez les données.","ctaCreateProject":"Créer un projet"},
-  "common":{"create":"Créer"},
-  "states":{"loading":"Chargement...","empty":"Aucune donnée disponible."},
-  "projectCreate":{"title":"Nouveau projet CSV","name":"Nom du projet"},
-  "csvUpload":{"title":"Upload CSV","submit":"Téléverser"},
-  "csvPreview":{"title":"Aperçu CSV","delimiter":"Séparateur détecté","columns":"Colonnes","continue":"Continuer vers mapping"},
-  "csvMapping":{"title":"Mapping des colonnes","save":"Enregistrer le mapping","import":"Importer les produits"},
-  "products":{"title":"Produits normalisés","columns":{"title":"Titre","sku":"SKU","brand":"Marque","category":"Catégorie","price":"Prix","currency":"Devise","availability":"Disponibilité","url":"URL"}},
-  "errors":{"CSV_INVALID_FILE_TYPE":"Type de fichier invalide. Utilisez un fichier CSV.","CSV_FILE_TOO_LARGE":"Fichier trop volumineux.","CSV_PARSE_ERROR":"Erreur de lecture CSV.","CSV_EMPTY_FILE":"Le fichier CSV est vide.","CSV_NO_COLUMNS_FOUND":"Aucune colonne détectée.","CSV_MAPPING_MISSING_TITLE":"Le champ title est obligatoire.","PROJECT_NOT_FOUND":"Projet introuvable.","PRODUCT_IMPORT_FAILED":"Échec de l'import produit.","UNKNOWN":"Une erreur inattendue est survenue."}
+  "app": {
+    "title": "PromptRank",
+    "subtitle": "Phase 1 CSV : import, mapping et produits normalisés.",
+    "language": {
+      "fr": "FR",
+      "en": "EN"
+    }
+  },
+  "nav": {
+    "home": "Accueil",
+    "newProject": "Créer un projet"
+  },
+  "common": {
+    "back": "Retour",
+    "backHome": "Revenir à l'accueil",
+    "create": "Créer"
+  },
+  "steps": {
+    "home": "Accueil",
+    "project": "Projet",
+    "upload": "Upload",
+    "preview": "Preview",
+    "mapping": "Mapping",
+    "products": "Produits"
+  },
+  "states": {
+    "analyzing": "Analyse en cours...",
+    "creating": "Création en cours...",
+    "empty": "Aucune donnée disponible.",
+    "emptyTitle": "Aucune donnée à afficher",
+    "importing": "Import en cours...",
+    "loading": "Chargement...",
+    "notAvailable": "Non renseigné",
+    "saving": "Enregistrement...",
+    "savingAndImporting": "Enregistrement et import..."
+  },
+  "flowStepper": {
+    "ariaLabel": "Progression du flow CSV",
+    "status": {
+      "completed": "Terminé",
+      "current": "En cours",
+      "upcoming": "À venir"
+    },
+    "steps": {
+      "project": "Projet",
+      "upload": "Upload",
+      "preview": "Preview",
+      "mapping": "Mapping",
+      "products": "Résultat"
+    }
+  },
+  "home": {
+    "title": "Normalisez un catalogue produit depuis un CSV.",
+    "description": "Créez un projet, importez votre fichier CSV, mappez vos colonnes et vérifiez les produits normalisés avant les prochaines phases.",
+    "ctaCreateProject": "Créer un projet CSV",
+    "phaseBadge": "Phase 1 CSV",
+    "scopeTitle": "Phase 1 : CSV uniquement",
+    "scopeText": "Cette version couvre le flux CSV. Shopify, IA, scoring, prompts et action cards ne sont pas inclus dans cette phase.",
+    "stepsTitle": "Le parcours en 3 étapes",
+    "steps": {
+      "import": "Importez votre CSV",
+      "map": "Mappez vos colonnes",
+      "review": "Consultez vos produits normalisés"
+    }
+  },
+  "projectCreate": {
+    "eyebrow": "Nouveau projet",
+    "title": "Nouveau projet CSV",
+    "description": "Renseignez le contexte minimal du catalogue. Ces informations aident à normaliser les produits importés.",
+    "submitHelp": "Vous serez redirigé vers l'import CSV après la création.",
+    "fields": {
+      "name": {
+        "label": "Nom du projet",
+        "placeholder": "Boutique gourdes client X",
+        "help": "Obligatoire. Recommandé : 3 à 80 caractères.",
+        "errors": {
+          "required": "Le nom du projet est obligatoire.",
+          "minlength": "Le nom doit contenir au moins 3 caractères.",
+          "maxlength": "Le nom ne doit pas dépasser 80 caractères."
+        }
+      },
+      "primaryLanguage": {
+        "label": "Langue principale",
+        "placeholder": "fr",
+        "help": "Obligatoire. Phase 1 : utilisez fr ou en.",
+        "errors": {
+          "required": "La langue principale est obligatoire.",
+          "pattern": "Utilisez fr ou en pour la Phase 1."
+        }
+      },
+      "targetCountry": {
+        "label": "Pays cible",
+        "placeholder": "FR",
+        "help": "Obligatoire. Format ISO 3166-1 alpha-2, par exemple FR, BE ou US.",
+        "errors": {
+          "required": "Le pays cible est obligatoire.",
+          "pattern": "Utilisez deux lettres majuscules, par exemple FR."
+        }
+      },
+      "currency": {
+        "label": "Devise",
+        "placeholder": "EUR",
+        "help": "Obligatoire. Format ISO 4217, par exemple EUR, USD ou GBP.",
+        "errors": {
+          "required": "La devise est obligatoire.",
+          "pattern": "Utilisez trois lettres majuscules, par exemple EUR."
+        }
+      }
+    }
+  },
+  "csvUpload": {
+    "eyebrow": "Import CSV",
+    "title": "Importer le fichier CSV",
+    "description": "Sélectionnez le catalogue produit à analyser. Le backend vérifiera aussi le fichier ; ces contrôles vous guident avant l'envoi.",
+    "chooseFile": "Choisir un fichier CSV",
+    "dropHelp": "Sélectionnez un fichier depuis votre ordinateur.",
+    "selectedFile": "Fichier sélectionné :",
+    "submit": "Analyser le CSV",
+    "submitHelp": "L'analyse détecte le séparateur, les colonnes et prépare l'aperçu.",
+    "sampleHelp": "Un fichier d'exemple est disponible dans samples/products-demo.csv.",
+    "constraints": {
+      "type": "Format accepté : fichier .csv uniquement.",
+      "size": "Taille maximale recommandée : {{max}} MB.",
+      "encoding": "Encodage recommandé : UTF-8.",
+      "delimiters": "Séparateurs supportés : virgule, point-virgule et tabulation."
+    }
+  },
+  "csvPreview": {
+    "eyebrow": "Aperçu",
+    "title": "Aperçu CSV",
+    "description": "Vérifiez rapidement la structure détectée avant de mapper les colonnes.",
+    "delimiter": "Séparateur détecté",
+    "columnCount": "Nombre de colonnes",
+    "rowCount": "Nombre de lignes",
+    "columns": "Colonnes détectées",
+    "tableTitle": "Aperçu des lignes",
+    "tableHelp": "La preview affiche uniquement les 20 premières lignes du fichier.",
+    "continue": "Continuer vers le mapping",
+    "empty": "Importez un CSV pour générer un aperçu.",
+    "tabDelimiter": "Tabulation"
+  },
+  "csvMapping": {
+    "eyebrow": "Mapping",
+    "title": "Mapping des colonnes",
+    "description": "Associez chaque colonne CSV à un champ produit normalisé. Le champ title est obligatoire pour importer.",
+    "tableTitle": "Colonnes à associer",
+    "titleRequiredHelp": "Le champ title doit être mappé avant l'import des produits.",
+    "requiredBadge": "title obligatoire",
+    "csvColumn": "Colonne CSV",
+    "targetField": "Champ produit normalisé",
+    "status": "Statut",
+    "noTarget": "Ne pas importer",
+    "autoMapped": "Auto-mappé",
+    "recommendedBadge": "Recommandé",
+    "unmappedBadge": "Non mappé",
+    "unmappedTitle": "Colonnes non mappées",
+    "unmappedHelp": "Ces colonnes ne seront pas affichées dans la table principale, mais seront conservées dans les attributs du produit.",
+    "recommendedWarningTitle": "Champs recommandés non mappés",
+    "recommendedWarningText": "{{fields}} ne sont pas mappés. Vous pouvez importer quand même, mais ces données seront moins visibles dans la table produit.",
+    "save": "Enregistrer le mapping",
+    "saveSuccess": "Mapping enregistré.",
+    "import": "Importer les produits",
+    "saveAndImport": "Enregistrer le mapping et importer",
+    "saveAndImportNote": "Le mapping affiché sera enregistré avant l'import.",
+    "empty": "Revenez à l'upload CSV pour générer un mapping.",
+    "recommendedTitle": "Champs recommandés",
+    "recommendedText": "title est obligatoire. Pour une table plus exploitable, mappez aussi ces champs si votre CSV les contient.",
+    "recommended": {
+      "description": "description pour enrichir le contenu produit",
+      "price": "price pour exploiter les prix",
+      "url": "url pour retrouver la fiche source",
+      "taxonomy": "brand, category ou productType pour structurer le catalogue"
+    },
+    "summary": {
+      "title": "Résumé avant import",
+      "help": "Vérifiez les points clés avant de lancer l'import.",
+      "mapped": "Colonnes mappées",
+      "unmapped": "Colonnes non mappées",
+      "recommendedMissing": "Recommandés manquants",
+      "recommendedMissingList": "Champs recommandés manquants :",
+      "titleOk": "title OK",
+      "titleMissing": "title manquant",
+      "taxonomyGroup": "category ou productType"
+    },
+    "fields": {
+      "title": "Titre",
+      "sku": "SKU",
+      "brand": "Marque",
+      "category": "Catégorie",
+      "price": "Prix",
+      "currency": "Devise",
+      "availability": "Disponibilité",
+      "url": "URL",
+      "description": "Description",
+      "vendor": "Vendeur",
+      "productType": "Type produit",
+      "imageUrls": "Images",
+      "gtin": "GTIN / EAN",
+      "tags": "Tags",
+      "seoTitle": "Titre SEO",
+      "metaDescription": "Meta description"
+    }
+  },
+  "products": {
+    "eyebrow": "Résultat",
+    "title": "Produits normalisés",
+    "description": "Contrôlez les produits importés après normalisation CSV.",
+    "empty": "Aucun produit importé pour le moment.",
+    "importAnotherCsv": "Importer un autre CSV",
+    "createAnother": "Créer un autre projet",
+    "summary": {
+      "countLabel": "Produits importés",
+      "projectLabel": "Projet courant"
+    },
+    "columns": {
+      "title": "Titre",
+      "sku": "SKU",
+      "brand": "Marque",
+      "category": "Catégorie",
+      "price": "Prix",
+      "currency": "Devise",
+      "availability": "Disponibilité",
+      "url": "URL"
+    }
+  },
+  "errors": {
+    "CSV_INVALID_FILE_TYPE": "Type de fichier invalide. Utilisez un fichier CSV.",
+    "CSV_FILE_REQUIRED": "Sélectionnez un fichier CSV avant de lancer l'analyse.",
+    "CSV_FILE_TOO_LARGE": "Fichier trop volumineux.",
+    "CSV_PARSE_ERROR": "Erreur de lecture CSV.",
+    "CSV_EMPTY_FILE": "Le fichier CSV est vide.",
+    "CSV_NO_COLUMNS_FOUND": "Aucune colonne détectée.",
+    "CSV_MAPPING_MISSING_TITLE": "Le champ title est obligatoire.",
+    "PROJECT_NOT_FOUND": "Projet introuvable.",
+    "PRODUCT_IMPORT_FAILED": "Échec de l'import produit.",
+    "UNKNOWN": "Une erreur inattendue est survenue."
+  }
 }

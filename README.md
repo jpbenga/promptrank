@@ -21,6 +21,50 @@ pnpm dev
 - Frontend: http://localhost:4200
 - Backend: http://localhost:3000
 
+## Tests et vérification
+La base de test est séparée de la base de dev :
+- `DATABASE_URL` pointe la base locale de développement.
+- `TEST_DATABASE_URL` pointe la base utilisée par les tests d'intégration.
+- `.env.example` fournit `TEST_DATABASE_URL=postgresql://promptrank:promptrank@localhost:5432/promptrank_test`.
+
+Préparation de la base de test :
+```bash
+docker compose up -d
+pnpm db:test:prepare
+```
+`pnpm db:test:prepare` crée `promptrank_test` si possible via Docker Compose, puis applique le schéma Prisma avec `prisma db push` sur `TEST_DATABASE_URL`.
+
+Commandes utiles :
+```bash
+pnpm test              # tests API unitaires + intégration DB, puis tests Angular
+pnpm test:api          # prépare la DB de test, puis lance unitaires + intégration backend
+pnpm test:web          # tests Angular/Karma
+pnpm test:integration  # prépare la DB de test, puis lance l'intégration API Phase 1
+pnpm test:e2e          # Playwright, nécessite pnpm dev déjà lancé
+pnpm lint
+pnpm build
+pnpm verify            # commande recommandée avant commit
+```
+
+Pour l'E2E Playwright :
+```bash
+pnpm dev
+pnpm test:e2e
+```
+Le test E2E suppose que PostgreSQL, l'API et Angular sont déjà lancés. Il utilise `backend-nest/test/fixtures/products-phase1.csv`.
+
+## Contrat de non-régression Phase 1 CSV
+Les tests verrouillent le périmètre Phase 1 :
+- détection de séparateur CSV `;`, `,`, tabulation ;
+- parsing UTF-8, champs avec virgules, prix avec point ou virgule ;
+- auto-mapping des colonnes produit attendues ;
+- validation `title` obligatoire avec code `CSV_MAPPING_MISSING_TITLE` ;
+- normalisation `price`, `availability`, `imageUrls`, `tags`, `rawSource` et `attributes` ;
+- import API complet d'un fixture de 8 produits ;
+- conservation de `couleur`, `matiere`, `capacite` dans `attributes` ;
+- affichage frontend des traductions de base, validation formulaire projet et messages mapping ;
+- E2E manuel/automatisé du flow CSV complet.
+
 ## Flux CSV UI (Phase 1)
 1. Ouvrir l'accueil, cliquer **Créer un projet**.
 2. Remplir `name`, `primaryLanguage`, `targetCountry`, `currency`.
@@ -42,6 +86,13 @@ pnpm dev
 - Sélecteur langue dans le layout (FR/EN).
 - Tous les textes visibles passent via `frontend-angular/src/assets/i18n/fr.json` / `en.json`.
 - Mapping des codes erreurs backend vers messages traduits côté frontend.
+
+## Tailwind CSS
+- Le frontend Angular utilise Tailwind CSS `3.4.13`, PostCSS `8.4.47` et Autoprefixer `10.4.20`, avec versions épinglées dans `frontend-angular/package.json`.
+- Angular compile `frontend-angular/src/styles.css`, qui contient les directives `@tailwind base`, `@tailwind components` et `@tailwind utilities`.
+- `frontend-angular/.postcssrc.json` charge les plugins PostCSS stables `tailwindcss` et `autoprefixer`.
+- `frontend-angular/tailwind.config.js` scanne `./src/**/*.{html,ts}` pour générer les classes utilisées dans les templates Angular.
+- Aucun CDN Tailwind n'est utilisé.
 
 ## CSV size limit
 - Variable d'env: `CSV_MAX_FILE_SIZE_MB`.

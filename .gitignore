@@ -6,3 +6,7 @@ backend-nest/dist
 frontend-angular/dist
 coverage
 .tmp
+.angular/
+frontend-angular/.angular/
+playwright-report/
+test-results/

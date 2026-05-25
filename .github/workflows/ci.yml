@@ -7,6 +7,28 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_USER: promptrank
+          POSTGRES_PASSWORD: promptrank
+          POSTGRES_DB: promptrank_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U promptrank -d promptrank_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://promptrank:promptrank@localhost:5432/promptrank_test
+      TEST_DATABASE_URL: postgresql://promptrank:promptrank@localhost:5432/promptrank_test
+      POSTGRES_USER: promptrank
+      POSTGRES_PASSWORD: promptrank
+      POSTGRES_DB: promptrank_test
+      POSTGRES_TEST_DB: promptrank_test
+      CSV_MAX_FILE_SIZE_MB: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,6 +38,10 @@ jobs:
         with:
           version: 9.12.3
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm db:test:prepare
       - run: pnpm lint
-      - run: pnpm test
-      - run: pnpm build
+      - run: pnpm test:api
+      - run: pnpm test:web
+      - run: pnpm --filter @promptrank/api build
+      - run: pnpm --filter @promptrank/web build
