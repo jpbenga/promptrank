@@ -1,5 +1,6 @@
 module.exports = function (config) {
-  const isCi = !!process.env.CI;
+  const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+  const isCiLike = !!process.env.CI || !!process.env.CODESPACES || isRoot;
 
   config.set({
     basePath: '',
@@ -34,7 +35,7 @@ module.exports = function (config) {
         ],
       },
     },
-    browsers: [isCi ? 'ChromeHeadlessNoSandbox' : 'ChromeHeadless'],
+    browsers: [isCiLike ? 'ChromeHeadlessNoSandbox' : 'ChromeHeadless'],
     restartOnFileChange: true,
   });
 };

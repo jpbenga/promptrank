@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, PromptIntent, PromptSource, PromptStatus, UpdatePromptRequest } from '@promptrank/shared-types';
+import type { ProductPrompt as PrismaProductPrompt } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 
 type ProductRecord = {
@@ -18,6 +19,43 @@ export class PromptsService {
   constructor(private readonly prisma: PrismaService) {}
   private readonly maxProducts = 5;
   private readonly maxPromptsPerProduct = 5;
+  private readonly validIntents: readonly PromptIntent[] = ['best', 'cheap', 'alternative', 'use_case', 'comparison', 'problem_solution', 'gift', 'local'];
+  private readonly validStatuses: readonly PromptStatus[] = ['proposed', 'edited', 'disabled'];
+  private readonly validSources: readonly PromptSource[] = ['template', 'manual'];
+
+  private toPromptIntent(value: string): PromptIntent {
+    if (this.validIntents.includes(value as PromptIntent)) return value as PromptIntent;
+    throw new BadRequestException({ code: 'PROMPT_UPDATE_INVALID', message: `Invalid prompt intent: ${value}` });
+  }
+
+  private toPromptStatus(value: string): PromptStatus {
+    if (this.validStatuses.includes(value as PromptStatus)) return value as PromptStatus;
+    throw new BadRequestException({ code: 'PROMPT_UPDATE_INVALID', message: `Invalid prompt status: ${value}` });
+  }
+
+  private toPromptSource(value: string): PromptSource {
+    if (this.validSources.includes(value as PromptSource)) return value as PromptSource;
+    throw new BadRequestException({ code: 'PROMPT_UPDATE_INVALID', message: `Invalid prompt source: ${value}` });
+  }
+
+  private toProductPromptDto(prompt: Partial<PrismaProductPrompt> & Pick<PrismaProductPrompt, 'id' | 'projectId' | 'productId' | 'text' | 'language' | 'country' | 'position'>): ProductPrompt {
+    const createdAt = prompt.createdAt instanceof Date ? prompt.createdAt : new Date();
+    const updatedAt = prompt.updatedAt instanceof Date ? prompt.updatedAt : createdAt;
+    return {
+      id: prompt.id,
+      projectId: prompt.projectId,
+      productId: prompt.productId,
+      text: prompt.text,
+      language: prompt.language,
+      country: prompt.country,
+      position: prompt.position,
+      intent: this.toPromptIntent(prompt.intent ?? 'best'),
+      source: this.toPromptSource(prompt.source ?? 'template'),
+      status: this.toPromptStatus(prompt.status ?? 'proposed'),
+      createdAt: createdAt.toISOString(),
+      updatedAt: updatedAt.toISOString(),
+    };
+  }
 
   private containsBpa(data: ProductRecord): boolean {
     const attrs = data.attributes && typeof data.attributes === 'object' ? Object.values(data.attributes as Record<string, unknown>).map(String) : [];
@@ -59,7 +97,7 @@ export class PromptsService {
 
     const requestedPerProduct = Number(body.promptsPerProduct || 5);
     const promptsPerProduct = Math.min(this.maxPromptsPerProduct, Math.max(1, requestedPerProduct));
-    if (productIds.length > this.maxProducts || requestedPerProduct > this.maxPromptsPerProduct || productIds.length * promptsPerProduct > 25) {
+    if (productIds.length > this.maxProducts || requestedPerProduct > this.maxPromptsPerProduct || productIds.length * promptsPerProduct >= 25) {
       throw new BadRequestException({ code: 'PROMPT_GENERATION_LIMIT_EXCEEDED', message: 'Limit exceeded' });
     }
 
@@ -89,33 +127,42 @@ export class PromptsService {
             position: idx,
           },
         })),
-      ) as ProductPrompt[];
-      promptsByProduct[product.id] = created;
-      generatedCount += created.length;
+      );
+      const createdDtos = created.map(prompt => this.toProductPromptDto(prompt));
+      promptsByProduct[product.id] = createdDtos;
+      generatedCount += createdDtos.length;
     }
 
     return { promptsByProduct, generatedCount };
   }
 
   listProject(projectId: string): Promise<ProductPrompt[]> {
-    return this.prisma.productPrompt.findMany({ where: { projectId, status: { not: 'disabled' } }, orderBy: [{ productId: 'asc' }, { position: 'asc' }] });
+    return this.prisma.productPrompt
+      .findMany({ where: { projectId, status: { not: 'disabled' } }, orderBy: [{ productId: 'asc' }, { position: 'asc' }] })
+      .then(prompts => prompts.map(prompt => this.toProductPromptDto(prompt)));
   }
 
   listProduct(projectId: string, productId: string): Promise<ProductPrompt[]> {
-    return this.prisma.productPrompt.findMany({ where: { projectId, productId, status: { not: 'disabled' } }, orderBy: { position: 'asc' } });
+    return this.prisma.productPrompt
+      .findMany({ where: { projectId, productId, status: { not: 'disabled' } }, orderBy: { position: 'asc' } })
+      .then(prompts => prompts.map(prompt => this.toProductPromptDto(prompt)));
   }
 
   async update(projectId: string, promptId: string, body: UpdatePromptRequest): Promise<ProductPrompt> {
     const prompt = await this.prisma.productPrompt.findFirst({ where: { id: promptId, projectId } });
     if (!prompt) throw new NotFoundException({ code: 'PROMPT_NOT_FOUND', message: 'Prompt not found' });
     if (!body.text && !body.status) throw new BadRequestException({ code: 'PROMPT_UPDATE_INVALID', message: 'Invalid update' });
-    const source: PromptSource = body.text && body.text !== prompt.text ? 'manual' : prompt.source as PromptSource;
-    return this.prisma.productPrompt.update({ where: { id: promptId }, data: { text: body.text ?? prompt.text, status: body.status ?? 'edited', source } });
+    const source: PromptSource = body.text && body.text !== prompt.text ? 'manual' : this.toPromptSource(prompt.source);
+    return this.prisma.productPrompt
+      .update({ where: { id: promptId }, data: { text: body.text ?? prompt.text, status: body.status ?? 'edited', source } })
+      .then(updated => this.toProductPromptDto(updated));
   }
 
   async remove(projectId: string, promptId: string): Promise<ProductPrompt> {
     const prompt = await this.prisma.productPrompt.findFirst({ where: { id: promptId, projectId } });
     if (!prompt) throw new NotFoundException({ code: 'PROMPT_NOT_FOUND', message: 'Prompt not found' });
-    return this.prisma.productPrompt.update({ where: { id: promptId }, data: { status: 'disabled' } });
+    return this.prisma.productPrompt
+      .update({ where: { id: promptId }, data: { status: 'disabled' } })
+      .then(updated => this.toProductPromptDto(updated));
   }
 }

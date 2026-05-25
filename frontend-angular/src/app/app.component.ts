@@ -591,31 +591,6 @@ class PreviewComponent {
           </aside>
         </div>
       
-
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-slate-900">{{ 'prompts.limit' | translate }}</p>
-          <p class="mt-2 text-xs text-slate-500">{{ 'prompts.limitDetail' | translate:{ maxProducts: 5, promptsPerProduct: 5 } }}</p>
-          <button type="button" (click)="generatePrompts()" [disabled]="selectedCount()===0 || selectedCount()>5 || generating" class="mt-3 rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:bg-slate-300">{{ 'prompts.generate' | translate }}</button>
-          <p class="mt-2 text-sm text-red-700" *ngIf="promptsError">{{ promptsError | translate }}</p>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" *ngIf="prompts.length">
-          <h3 class="font-semibold">{{ 'prompts.title' | translate }}</h3>
-          <div *ngFor="let group of groupedPrompts()" class="mt-3 border-t pt-3">
-            <p class="text-sm font-medium">{{ productTitle(group.productId) }}</p>
-            <div *ngFor="let pr of group.items" class="mt-2 rounded border p-2">
-              <div class="mb-2 flex flex-wrap gap-2 text-xs">
-                <span class="rounded bg-slate-100 px-2 py-0.5">{{ promptStatusKey(pr.status) | translate }}</span>
-                <span class="rounded bg-blue-50 px-2 py-0.5">{{ promptIntentKey(pr.intent) | translate }}</span>
-                <span class="rounded bg-emerald-50 px-2 py-0.5">{{ promptSourceKey(pr.source) | translate }}</span>
-              </div>
-              <div class="flex gap-2">
-              <input class="flex-1 rounded border px-2 py-1" [(ngModel)]="pr.text" />
-              <button type="button" (click)="savePrompt(pr)" class="rounded bg-slate-100 px-2">{{ 'common.save' | translate }}</button>
-              <button type="button" (click)="disablePrompt(pr)" class="rounded bg-red-100 px-2">{{ 'common.delete' | translate }}</button>
-            </div>
-          </div>
-        </div>
       </ng-container>
     </section>
   `,
@@ -821,9 +796,10 @@ export class MappingComponent {
                 <span class="rounded bg-emerald-50 px-2 py-0.5">{{ promptSourceKey(pr.source) | translate }}</span>
               </div>
               <div class="flex gap-2">
-              <input class="flex-1 rounded border px-2 py-1" [(ngModel)]="pr.text" />
-              <button type="button" (click)="savePrompt(pr)" class="rounded bg-slate-100 px-2">{{ 'common.save' | translate }}</button>
-              <button type="button" (click)="disablePrompt(pr)" class="rounded bg-red-100 px-2">{{ 'common.delete' | translate }}</button>
+                <input class="flex-1 rounded border px-2 py-1" [(ngModel)]="pr.text" />
+                <button type="button" (click)="savePrompt(pr)" class="rounded bg-slate-100 px-2">{{ 'common.save' | translate }}</button>
+                <button type="button" (click)="disablePrompt(pr)" class="rounded bg-red-100 px-2">{{ 'common.delete' | translate }}</button>
+              </div>
             </div>
           </div>
         </div>
