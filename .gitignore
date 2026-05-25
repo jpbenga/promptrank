@@ -1,5 +1,4 @@
 node_modules
-pnpm-lock.yaml
 .env
 backend-nest/.env
 backend-nest/dist
