@@ -3,6 +3,10 @@
     "outDir": "./out-tsc/app",
     "strict": true,
     "types": [],
+    "baseUrl": ".",
+    "paths": {
+      "@promptrank/shared-types": ["../shared-types/src/index.ts"]
+    },
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",
