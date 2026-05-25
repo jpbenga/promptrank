@@ -5,6 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute, Router, pro
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 
+import type { GeneratePromptsRequest, ProductPrompt, UpdatePromptRequest } from '@promptrank/shared-types';
 type ApiError = { code?: string; message?: string };
 const API_URL = 'http://localhost:3000';
 const CSV_MAX_FILE_SIZE_MB = 5;
@@ -21,6 +22,10 @@ export class ErrorI18nService {
     CSV_MAPPING_MISSING_TITLE: 'errors.CSV_MAPPING_MISSING_TITLE',
     PROJECT_NOT_FOUND: 'errors.PROJECT_NOT_FOUND',
     PRODUCT_IMPORT_FAILED: 'errors.PRODUCT_IMPORT_FAILED',
+    PROMPT_GENERATION_LIMIT_EXCEEDED: 'errors.PROMPT_GENERATION_LIMIT_EXCEEDED',
+    PROMPT_GENERATION_NO_PRODUCTS: 'errors.PROMPT_GENERATION_NO_PRODUCTS',
+    PROMPT_NOT_FOUND: 'errors.PROMPT_NOT_FOUND',
+    PROMPT_UPDATE_INVALID: 'errors.PROMPT_UPDATE_INVALID',
   };
 
   getKey(code?: string) { return this.map[code || ''] || 'errors.UNKNOWN'; }
@@ -35,6 +40,10 @@ export class ApiService {
   saveMapping(projectId: string, csvImportId: string, mapping?: Record<string, string>) { return this.http.post<any>(`${API_URL}/projects/${projectId}/csv/mapping`, { csvImportId, mapping }); }
   importProducts(projectId: string) { return this.http.post<any>(`${API_URL}/projects/${projectId}/csv/import`, {}); }
   listProducts(projectId: string) { return this.http.get<any[]>(`${API_URL}/projects/${projectId}/products`); }
+  generatePrompts(projectId: string, payload: GeneratePromptsRequest) { return this.http.post<any>(`${API_URL}/projects/${projectId}/prompts/generate`, payload); }
+  listPrompts(projectId: string) { return this.http.get<ProductPrompt[]>(`${API_URL}/projects/${projectId}/prompts`); }
+  updatePrompt(projectId: string, promptId: string, payload: UpdatePromptRequest) { return this.http.patch<ProductPrompt>(`${API_URL}/projects/${projectId}/prompts/${promptId}`, payload); }
+  deletePrompt(projectId: string, promptId: string) { return this.http.delete<any>(`${API_URL}/projects/${projectId}/prompts/${promptId}`); }
 }
 
 @Component({
@@ -318,7 +327,7 @@ class UploadComponent {
 
 @Component({
   standalone: true,
-  imports: [CommonModule, TranslateModule, RouterLink, CsvFlowStepperComponent],
+  imports: [CommonModule, FormsModule, TranslateModule, RouterLink, CsvFlowStepperComponent],
   template: `
     <section class="space-y-6">
       <app-csv-flow-stepper current="preview"></app-csv-flow-stepper>
@@ -386,6 +395,36 @@ class UploadComponent {
               </tbody>
             </table>
           </div>
+        </div>
+      
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-sm font-semibold text-slate-900">{{ 'prompts.limit' | translate }}</p>
+          <p class="mt-2 text-xs text-slate-500">{{ 'prompts.limitDetail' | translate:{ maxProducts: 5, promptsPerProduct: 5 } }}</p>
+          <button type="button" (click)="generatePrompts()" [disabled]="selectedCount()===0 || selectedCount()>5 || generating" class="mt-3 rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:bg-slate-300">{{ 'prompts.generate' | translate }}</button>
+          <p class="mt-2 text-sm text-red-700" *ngIf="promptsError">{{ promptsError | translate }}</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" *ngIf="prompts.length">
+          <h3 class="font-semibold">{{ 'prompts.title' | translate }}</h3>
+          <div *ngFor="let group of groupedPrompts()" class="mt-3 border-t pt-3">
+            <p class="text-sm font-medium">{{ productTitle(group.productId) }}</p>
+            <div *ngFor="let pr of group.items" class="mt-2 rounded border p-2">
+              <div class="mb-2 flex flex-wrap gap-2 text-xs">
+                <span class="rounded bg-slate-100 px-2 py-0.5">{{ promptStatusKey(pr.status) | translate }}</span>
+                <span class="rounded bg-blue-50 px-2 py-0.5">{{ promptIntentKey(pr.intent) | translate }}</span>
+                <span class="rounded bg-emerald-50 px-2 py-0.5">{{ promptSourceKey(pr.source) | translate }}</span>
+              </div>
+              <div class="flex gap-2">
+              <input class="flex-1 rounded border px-2 py-1" [(ngModel)]="pr.text" />
+              <button type="button" (click)="savePrompt(pr)" class="rounded bg-slate-100 px-2">{{ 'common.save' | translate }}</button>
+              <button type="button" (click)="disablePrompt(pr)" class="rounded bg-red-100 px-2">{{ 'common.delete' | translate }}</button>
+            </div>
+            </div>
+          </div>
+          <p class="mt-2 text-sm text-green-700" *ngIf="promptsSuccess">{{ promptsSuccess | translate }}</p>
+          <p class="mt-2 text-sm text-slate-500" *ngIf="promptsLoading">{{ "states.loading" | translate }}</p>
+          <p class="mt-2 text-sm text-slate-500" *ngIf="!promptsLoading && !prompts.length">{{ "prompts.empty" | translate }}</p>
         </div>
       </ng-container>
     </section>
@@ -551,6 +590,32 @@ class PreviewComponent {
             </ul>
           </aside>
         </div>
+      
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-sm font-semibold text-slate-900">{{ 'prompts.limit' | translate }}</p>
+          <p class="mt-2 text-xs text-slate-500">{{ 'prompts.limitDetail' | translate:{ maxProducts: 5, promptsPerProduct: 5 } }}</p>
+          <button type="button" (click)="generatePrompts()" [disabled]="selectedCount()===0 || selectedCount()>5 || generating" class="mt-3 rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:bg-slate-300">{{ 'prompts.generate' | translate }}</button>
+          <p class="mt-2 text-sm text-red-700" *ngIf="promptsError">{{ promptsError | translate }}</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" *ngIf="prompts.length">
+          <h3 class="font-semibold">{{ 'prompts.title' | translate }}</h3>
+          <div *ngFor="let group of groupedPrompts()" class="mt-3 border-t pt-3">
+            <p class="text-sm font-medium">{{ productTitle(group.productId) }}</p>
+            <div *ngFor="let pr of group.items" class="mt-2 rounded border p-2">
+              <div class="mb-2 flex flex-wrap gap-2 text-xs">
+                <span class="rounded bg-slate-100 px-2 py-0.5">{{ promptStatusKey(pr.status) | translate }}</span>
+                <span class="rounded bg-blue-50 px-2 py-0.5">{{ promptIntentKey(pr.intent) | translate }}</span>
+                <span class="rounded bg-emerald-50 px-2 py-0.5">{{ promptSourceKey(pr.source) | translate }}</span>
+              </div>
+              <div class="flex gap-2">
+              <input class="flex-1 rounded border px-2 py-1" [(ngModel)]="pr.text" />
+              <button type="button" (click)="savePrompt(pr)" class="rounded bg-slate-100 px-2">{{ 'common.save' | translate }}</button>
+              <button type="button" (click)="disablePrompt(pr)" class="rounded bg-red-100 px-2">{{ 'common.delete' | translate }}</button>
+            </div>
+          </div>
+        </div>
       </ng-container>
     </section>
   `,
@@ -659,7 +724,7 @@ export class MappingComponent {
 
 @Component({
   standalone: true,
-  imports: [CommonModule, TranslateModule, RouterLink, CsvFlowStepperComponent],
+  imports: [CommonModule, FormsModule, TranslateModule, RouterLink, CsvFlowStepperComponent],
   template: `
     <section class="space-y-6">
       <app-csv-flow-stepper current="products"></app-csv-flow-stepper>
@@ -711,11 +776,13 @@ export class MappingComponent {
             <table class="min-w-full divide-y divide-slate-200 text-sm">
               <thead class="bg-slate-50">
                 <tr>
+                  <th class="px-4 py-3"></th>
                   <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-slate-700" *ngFor="let c of cols">{{ ('products.columns.' + c) | translate }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 bg-white">
                 <tr class="transition odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/60" *ngFor="let p of products">
+                  <td class="px-4 py-3"><input type="checkbox" [checked]="selected[p.id]" (change)="toggleProduct(p.id,$event)"/></td>
                   <td class="max-w-xs px-4 py-3 font-medium text-slate-950">{{ p.title || ('states.notAvailable' | translate) }}</td>
                   <td class="px-4 py-3 text-slate-700">{{ p.sku || ('states.notAvailable' | translate) }}</td>
                   <td class="px-4 py-3 text-slate-700">{{ p.brand || ('states.notAvailable' | translate) }}</td>
@@ -734,6 +801,32 @@ export class MappingComponent {
             </table>
           </div>
         </div>
+      
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-sm font-semibold text-slate-900">{{ 'prompts.limit' | translate }}</p>
+          <p class="mt-2 text-xs text-slate-500">{{ 'prompts.limitDetail' | translate:{ maxProducts: 5, promptsPerProduct: 5 } }}</p>
+          <button type="button" (click)="generatePrompts()" [disabled]="selectedCount()===0 || selectedCount()>5 || generating" class="mt-3 rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:bg-slate-300">{{ 'prompts.generate' | translate }}</button>
+          <p class="mt-2 text-sm text-red-700" *ngIf="promptsError">{{ promptsError | translate }}</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" *ngIf="prompts.length">
+          <h3 class="font-semibold">{{ 'prompts.title' | translate }}</h3>
+          <div *ngFor="let group of groupedPrompts()" class="mt-3 border-t pt-3">
+            <p class="text-sm font-medium">{{ productTitle(group.productId) }}</p>
+            <div *ngFor="let pr of group.items" class="mt-2 rounded border p-2">
+              <div class="mb-2 flex flex-wrap gap-2 text-xs">
+                <span class="rounded bg-slate-100 px-2 py-0.5">{{ promptStatusKey(pr.status) | translate }}</span>
+                <span class="rounded bg-blue-50 px-2 py-0.5">{{ promptIntentKey(pr.intent) | translate }}</span>
+                <span class="rounded bg-emerald-50 px-2 py-0.5">{{ promptSourceKey(pr.source) | translate }}</span>
+              </div>
+              <div class="flex gap-2">
+              <input class="flex-1 rounded border px-2 py-1" [(ngModel)]="pr.text" />
+              <button type="button" (click)="savePrompt(pr)" class="rounded bg-slate-100 px-2">{{ 'common.save' | translate }}</button>
+              <button type="button" (click)="disablePrompt(pr)" class="rounded bg-red-100 px-2">{{ 'common.delete' | translate }}</button>
+            </div>
+          </div>
+        </div>
       </ng-container>
     </section>
   `,
@@ -748,6 +841,12 @@ class ProductsComponent {
   error = '';
   projectId = this.route.snapshot.paramMap.get('id')!;
   cols = ['title', 'sku', 'brand', 'category', 'price', 'currency', 'availability', 'url'];
+  selected: Record<string, boolean> = {};
+  prompts: ProductPrompt[] = [];
+  promptsSuccess = "";
+  promptsLoading = false;
+  generating = false;
+  promptsError = '';
 
   ngOnInit() {
     this.api.listProducts(this.projectId).subscribe({
@@ -772,6 +871,39 @@ class ProductsComponent {
       return `${amount} ${product.currency || ''}`.trim();
     }
   }
+
+
+  toggleProduct(id: string, event: Event) { this.selected[id] = (event.target as HTMLInputElement).checked; }
+  selectedCount() { return Object.values(this.selected).filter(Boolean).length; }
+  productTitle(productId: string) { return this.products.find(p => p.id === productId)?.title || productId; }
+  groupedPrompts() { const map: Record<string, ProductPrompt[]> = {}; for (const p of this.prompts) { map[p.productId] = map[p.productId] || []; map[p.productId].push(p); } return Object.entries(map).map(([productId, items]) => ({ productId, items })); }
+  generatePrompts() {
+    const productIds = Object.entries(this.selected).filter(([,v])=>v).map(([k])=>k);
+    if (!productIds.length) { this.promptsError='errors.PROMPT_GENERATION_NO_PRODUCTS'; return; }
+    this.generating=true; this.promptsLoading=true; this.promptsError=''; this.promptsSuccess='';
+    this.api.generatePrompts(this.projectId,{productIds,promptsPerProduct:5,language:this.t.currentLang||'fr'}).subscribe({
+      next:()=>this.api.listPrompts(this.projectId).subscribe({next:r=>{this.prompts=r;this.generating=false;this.promptsLoading=false;}}),
+      error:(e:HttpErrorResponse)=>{this.promptsError=this.errs.getKey((e.error as ApiError)?.code);this.generating=false;this.promptsLoading=false;},
+    });
+  }
+  savePrompt(prompt: ProductPrompt) {
+    this.promptsError=''; this.promptsSuccess='';
+    this.api.updatePrompt(this.projectId, prompt.id, { text: prompt.text, status: 'edited' }).subscribe({
+      next: updated => { this.prompts = this.prompts.map(p => p.id === updated.id ? updated : p); this.promptsSuccess='prompts.updateSuccess'; },
+      error: (e: HttpErrorResponse) => { this.promptsError=this.errs.getKey((e.error as ApiError)?.code); },
+    });
+  }
+  disablePrompt(prompt: ProductPrompt) {
+    this.promptsError=''; this.promptsSuccess='';
+    this.api.deletePrompt(this.projectId, prompt.id).subscribe({
+      next:()=>{this.prompts=this.prompts.filter(p=>p.id!==prompt.id); this.promptsSuccess='prompts.deleteSuccess';},
+      error:(e: HttpErrorResponse)=>{this.promptsError=this.errs.getKey((e.error as ApiError)?.code);},
+    });
+  }
+
+  promptStatusKey(status: string) { return `prompts.status.${status}`; }
+  promptIntentKey(intent: string) { return `prompts.intent.${intent}`; }
+  promptSourceKey(source: string) { return `prompts.source.${source}`; }
 
   availabilityClass(value?: string) {
     const normalized = (value || '').toLowerCase();

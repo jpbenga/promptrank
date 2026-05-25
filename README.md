@@ -105,3 +105,35 @@ Redis est volontairement hors périmètre Phase 1. Il sera introduit plus tard s
 - Phase 1 couvre uniquement CSV.
 - Hors périmètre: Shopify, prompts IA, analyse IA, scoring, action cards, billing.
 - Phase 2 traitera l'extension fonctionnelle après stabilisation.
+
+## Phase 2 - Génération de prompts d'achat (déterministe)
+- Génération locale, déterministe, via templates FR/EN (aucune API IA externe).
+- Limites demo/local: 5 produits max sélectionnés, 5 prompts max par produit, 25 prompts max par génération.
+- Endpoints:
+  - `POST /projects/:projectId/prompts/generate`
+  - `GET /projects/:projectId/prompts`
+  - `GET /projects/:projectId/products/:productId/prompts`
+  - `PATCH /projects/:projectId/prompts/:promptId`
+  - `DELETE /projects/:projectId/prompts/:promptId` (désactivation logique)
+- Non-régression: les tests Phase 1 restent la référence et doivent rester passants.
+
+### Test manuel Phase 2
+1. Aller jusqu'à la page produits via le flow CSV Phase 1.
+2. Sélectionner jusqu'à 5 produits.
+3. Cliquer **Générer des prompts**.
+4. Vérifier les badges `status`, `intent`, `source`.
+5. Éditer un prompt puis sauvegarder (feedback succès attendu).
+6. Désactiver un prompt (il disparaît de la liste active).
+
+### Commandes tests Phase 2
+- `pnpm test:api` (unitaires backend + intégrations Phase 1 + Phase 2)
+- `pnpm test:web` (tests Angular)
+- `pnpm test:e2e` (Playwright, scénario Phase 2 disponible dans `e2e/phase2-prompts.spec.ts`)
+
+## Contrat de non-régression Phase 2
+- sélection de produits depuis la table ;
+- génération de prompts déterministes sans API IA ;
+- édition et désactivation de prompts ;
+- respect des limites 5 produits / 5 prompts / 25 total ;
+- textes prompts i18n FR/EN ;
+- non-régression des tests Phase 1 (CSV) conservée.
