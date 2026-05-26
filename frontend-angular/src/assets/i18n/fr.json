@@ -215,6 +215,12 @@
       "countLabel": "Produits importés",
       "projectLabel": "Projet courant"
     },
+    "selection": {
+      "selectAll": "Tout sélectionner",
+      "deselectAll": "Tout désélectionner",
+      "count": "{{selected}} produits sélectionnés",
+      "maxNotice": "Seuls {{max}} produits maximum peuvent être sélectionnés pour la génération."
+    },
     "columns": {
       "title": "Titre",
       "sku": "SKU",
@@ -246,6 +252,14 @@
   "prompts": {
     "title": "Prompts",
     "generate": "Générer des prompts",
+    "generating": "Génération en cours...",
+    "generatingDetail": "Génération des prompts en cours...",
+    "generateSuccess": "{{count}} prompts générés.",
+    "generatedCount": "{{count}} prompts générés",
+    "groupCount": "{{count}} prompts",
+    "saving": "Enregistrement en cours...",
+    "saveSuccess": "Prompt enregistré.",
+    "saveError": "Erreur lors de l'enregistrement.",
     "limit": "Limites locales/demo",
     "limitDetail": "{{maxProducts}} produits maximum / {{promptsPerProduct}} prompts par produit",
     "empty": "Aucun prompt généré pour le moment.",

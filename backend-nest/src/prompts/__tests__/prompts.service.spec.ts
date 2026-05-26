@@ -40,7 +40,8 @@ describe('PromptsService', () => {
     await expect(service.generate('p1', { productIds: [] })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.generate('p1', { productIds: ['1','2','3','4','5','6'] })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.generate('p1', { productIds: ['1'], promptsPerProduct: 6 })).rejects.toBeInstanceOf(BadRequestException);
-    await expect(service.generate('p1', { productIds: ['1','2','3','4','5'], promptsPerProduct: 5 })).rejects.toBeInstanceOf(BadRequestException);
+    prisma.product.findMany.mockResolvedValue(['1','2','3','4','5'].map(id => ({ id, productType: 'gourde', brand: 'Marque' })));
+    await expect(service.generate('p1', { productIds: ['1','2','3','4','5'], promptsPerProduct: 5 })).resolves.toMatchObject({ generatedCount: 25 });
   });
 
   it('throws PROJECT_NOT_FOUND', async () => {

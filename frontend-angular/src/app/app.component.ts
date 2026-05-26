@@ -5,7 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute, Router, pro
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 
-import type { GeneratePromptsRequest, ProductPrompt, UpdatePromptRequest } from '@promptrank/shared-types';
+import type { GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, UpdatePromptRequest } from '@promptrank/shared-types';
 type ApiError = { code?: string; message?: string };
 const API_URL = 'http://localhost:3000';
 const CSV_MAX_FILE_SIZE_MB = 5;
@@ -396,36 +396,6 @@ class UploadComponent {
             </table>
           </div>
         </div>
-      
-
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-slate-900">{{ 'prompts.limit' | translate }}</p>
-          <p class="mt-2 text-xs text-slate-500">{{ 'prompts.limitDetail' | translate:{ maxProducts: 5, promptsPerProduct: 5 } }}</p>
-          <button type="button" (click)="generatePrompts()" [disabled]="selectedCount()===0 || selectedCount()>5 || generating" class="mt-3 rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:bg-slate-300">{{ 'prompts.generate' | translate }}</button>
-          <p class="mt-2 text-sm text-red-700" *ngIf="promptsError">{{ promptsError | translate }}</p>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" *ngIf="prompts.length">
-          <h3 class="font-semibold">{{ 'prompts.title' | translate }}</h3>
-          <div *ngFor="let group of groupedPrompts()" class="mt-3 border-t pt-3">
-            <p class="text-sm font-medium">{{ productTitle(group.productId) }}</p>
-            <div *ngFor="let pr of group.items" class="mt-2 rounded border p-2">
-              <div class="mb-2 flex flex-wrap gap-2 text-xs">
-                <span class="rounded bg-slate-100 px-2 py-0.5">{{ promptStatusKey(pr.status) | translate }}</span>
-                <span class="rounded bg-blue-50 px-2 py-0.5">{{ promptIntentKey(pr.intent) | translate }}</span>
-                <span class="rounded bg-emerald-50 px-2 py-0.5">{{ promptSourceKey(pr.source) | translate }}</span>
-              </div>
-              <div class="flex gap-2">
-              <input class="flex-1 rounded border px-2 py-1" [(ngModel)]="pr.text" />
-              <button type="button" (click)="savePrompt(pr)" class="rounded bg-slate-100 px-2">{{ 'common.save' | translate }}</button>
-              <button type="button" (click)="disablePrompt(pr)" class="rounded bg-red-100 px-2">{{ 'common.delete' | translate }}</button>
-            </div>
-            </div>
-          </div>
-          <p class="mt-2 text-sm text-green-700" *ngIf="promptsSuccess">{{ promptsSuccess | translate }}</p>
-          <p class="mt-2 text-sm text-slate-500" *ngIf="promptsLoading">{{ "states.loading" | translate }}</p>
-          <p class="mt-2 text-sm text-slate-500" *ngIf="!promptsLoading && !prompts.length">{{ "prompts.empty" | translate }}</p>
-        </div>
       </ng-container>
     </section>
   `,
@@ -567,10 +537,6 @@ class PreviewComponent {
               <a [routerLink]="['/projects', projectId(), 'preview']" [state]="{ preview }" class="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                 {{ 'common.back' | translate }}
               </a>
-              <button type="button" (click)="save()" [disabled]="saving || importing" class="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">
-                <span class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700" *ngIf="saving"></span>
-                {{ (saving ? 'states.saving' : 'csvMapping.save') | translate }}
-              </button>
               <button type="button" (click)="importProducts()" [disabled]="!hasTitleMapping() || importing || loading" class="inline-flex items-center justify-center rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
                 <span class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" *ngIf="importing"></span>
                 {{ (importing ? 'states.savingAndImporting' : 'csvMapping.saveAndImport') | translate }}
@@ -605,7 +571,6 @@ export class MappingComponent {
   mapping: Record<string, string> = {};
   autoMappedColumns = new Set<string>();
   loading = false;
-  saving = false;
   importing = false;
   mappingTouched = false;
   error = '';
@@ -650,27 +615,6 @@ export class MappingComponent {
   missingRecommendedLabels() { return this.missingRecommendedFieldKeys().map(key => this.t.instant(key)).join(', '); }
   hasRecommendedWarnings() { return !Object.values(this.mapping).includes('price') || !Object.values(this.mapping).includes('url'); }
   onMappingChange() { this.mappingTouched = true; this.success = ''; }
-
-  save() {
-    this.mappingTouched = true;
-    this.success = '';
-    if (!this.hasTitleMapping()) {
-      this.error = 'errors.CSV_MAPPING_MISSING_TITLE';
-      return;
-    }
-    this.saving = true;
-    this.error = '';
-    this.api.saveMapping(this.projectId(), this.preview.id, this.mapping).subscribe({
-      next: () => {
-        this.success = 'csvMapping.saveSuccess';
-        this.saving = false;
-      },
-      error: (e: HttpErrorResponse) => {
-        this.error = this.errs.getKey((e.error as ApiError)?.code);
-        this.saving = false;
-      },
-    });
-  }
 
   importProducts() {
     this.mappingTouched = true;
@@ -746,6 +690,28 @@ export class MappingComponent {
           </div>
         </div>
 
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p class="text-sm font-semibold text-slate-900">{{ 'prompts.limit' | translate }}</p>
+              <p class="mt-1 text-sm text-slate-600">{{ 'products.selection.count' | translate:{ selected: selectedCountValue } }}</p>
+              <p class="mt-1 text-xs text-slate-500">{{ 'prompts.limitDetail' | translate:{ maxProducts: maxSelectableProducts, promptsPerProduct: promptsPerProduct } }}</p>
+              <p class="mt-2 text-xs text-amber-700" *ngIf="selectionNotice">{{ selectionNotice | translate:{ max: maxSelectableProducts } }}</p>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button type="button" (click)="selectAllProducts()" [disabled]="generating" class="inline-flex items-center justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">{{ 'products.selection.selectAll' | translate }}</button>
+              <button type="button" (click)="deselectAllProducts()" [disabled]="generating || selectedCountValue === 0" class="inline-flex items-center justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">{{ 'products.selection.deselectAll' | translate }}</button>
+              <button type="button" (click)="generatePrompts()" [disabled]="selectedCountValue===0 || selectedCountValue>maxSelectableProducts || generating" class="inline-flex items-center justify-center rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+                <span class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" *ngIf="promptsLoading"></span>
+                {{ (promptsLoading ? 'prompts.generating' : 'prompts.generate') | translate }}
+              </button>
+            </div>
+          </div>
+          <p class="mt-3 text-sm text-blue-700" *ngIf="promptsLoading">{{ 'prompts.generatingDetail' | translate }}</p>
+          <p class="mt-3 text-sm text-red-700" *ngIf="promptsError">{{ promptsError | translate }}</p>
+          <p class="mt-3 text-sm text-green-700" *ngIf="promptsSuccess">{{ promptsSuccess | translate:{ count: generatedPromptCount } }}</p>
+        </div>
+
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -757,7 +723,7 @@ export class MappingComponent {
               </thead>
               <tbody class="divide-y divide-slate-100 bg-white">
                 <tr class="transition odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/60" *ngFor="let p of products">
-                  <td class="px-4 py-3"><input type="checkbox" [checked]="selected[p.id]" (change)="toggleProduct(p.id,$event)"/></td>
+                  <td class="px-4 py-3"><input type="checkbox" [checked]="selected[p.id]" [disabled]="!selected[p.id] && selectedCountValue >= maxSelectableProducts" (change)="toggleProduct(p.id,$event)"/></td>
                   <td class="max-w-xs px-4 py-3 font-medium text-slate-950">{{ p.title || ('states.notAvailable' | translate) }}</td>
                   <td class="px-4 py-3 text-slate-700">{{ p.sku || ('states.notAvailable' | translate) }}</td>
                   <td class="px-4 py-3 text-slate-700">{{ p.brand || ('states.notAvailable' | translate) }}</td>
@@ -776,29 +742,34 @@ export class MappingComponent {
             </table>
           </div>
         </div>
-      
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-slate-900">{{ 'prompts.limit' | translate }}</p>
-          <p class="mt-2 text-xs text-slate-500">{{ 'prompts.limitDetail' | translate:{ maxProducts: 5, promptsPerProduct: 5 } }}</p>
-          <button type="button" (click)="generatePrompts()" [disabled]="selectedCount()===0 || selectedCount()>5 || generating" class="mt-3 rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:bg-slate-300">{{ 'prompts.generate' | translate }}</button>
-          <p class="mt-2 text-sm text-red-700" *ngIf="promptsError">{{ promptsError | translate }}</p>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" *ngIf="prompts.length">
-          <h3 class="font-semibold">{{ 'prompts.title' | translate }}</h3>
-          <div *ngFor="let group of groupedPrompts()" class="mt-3 border-t pt-3">
-            <p class="text-sm font-medium">{{ productTitle(group.productId) }}</p>
-            <div *ngFor="let pr of group.items" class="mt-2 rounded border p-2">
-              <div class="mb-2 flex flex-wrap gap-2 text-xs">
-                <span class="rounded bg-slate-100 px-2 py-0.5">{{ promptStatusKey(pr.status) | translate }}</span>
-                <span class="rounded bg-blue-50 px-2 py-0.5">{{ promptIntentKey(pr.intent) | translate }}</span>
-                <span class="rounded bg-emerald-50 px-2 py-0.5">{{ promptSourceKey(pr.source) | translate }}</span>
-              </div>
-              <div class="flex gap-2">
-                <input class="flex-1 rounded border px-2 py-1" [(ngModel)]="pr.text" />
-                <button type="button" (click)="savePrompt(pr)" class="rounded bg-slate-100 px-2">{{ 'common.save' | translate }}</button>
-                <button type="button" (click)="disablePrompt(pr)" class="rounded bg-red-100 px-2">{{ 'common.delete' | translate }}</button>
+        <div id="prompts-section" class="space-y-4 scroll-mt-6" *ngIf="prompts.length">
+          <div>
+            <h3 class="text-xl font-bold text-slate-950">{{ 'prompts.title' | translate }}</h3>
+            <p class="mt-1 text-sm text-slate-600">{{ 'prompts.generatedCount' | translate:{ count: generatedPromptCount } }}</p>
+          </div>
+          <div *ngFor="let group of groupedPromptItems" class="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 shadow-sm">
+            <div class="flex flex-col gap-2 border-b border-blue-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-base font-bold text-slate-950">{{ group.productTitle }}</p>
+              <span class="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-800 ring-1 ring-inset ring-blue-100">{{ 'prompts.groupCount' | translate:{ count: group.items.length } }}</span>
+            </div>
+            <div class="mt-3 space-y-3">
+              <div *ngFor="let pr of group.items" class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <div class="mb-2 flex flex-wrap gap-2 text-xs">
+                  <span class="rounded bg-slate-100 px-2 py-0.5">{{ promptStatusKey(pr.status) | translate }}</span>
+                  <span class="rounded bg-blue-50 px-2 py-0.5">{{ promptIntentKey(pr.intent) | translate }}</span>
+                  <span class="rounded bg-emerald-50 px-2 py-0.5">{{ promptSourceKey(pr.source) | translate }}</span>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                  <input class="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1 text-slate-950 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30" [(ngModel)]="pr.text" [disabled]="promptSaving[pr.id]" />
+                  <button type="button" (click)="savePrompt(pr)" [disabled]="promptSaving[pr.id]" class="inline-flex items-center justify-center rounded bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-900 hover:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-500">
+                    <span class="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-blue-700" *ngIf="promptSaving[pr.id]"></span>
+                    {{ (promptSaving[pr.id] ? 'prompts.saving' : 'common.save') | translate }}
+                  </button>
+                  <button type="button" (click)="disablePrompt(pr)" [disabled]="promptSaving[pr.id]" class="inline-flex items-center justify-center rounded bg-red-100 px-3 py-1.5 text-sm font-semibold text-red-900 hover:bg-red-200 disabled:cursor-not-allowed disabled:text-slate-500">{{ 'common.delete' | translate }}</button>
+                </div>
+                <p class="mt-2 text-sm text-green-700" *ngIf="promptSaveSuccess[pr.id]">{{ 'prompts.saveSuccess' | translate }}</p>
+                <p class="mt-2 text-sm text-red-700" *ngIf="promptSaveError[pr.id]">{{ promptSaveError[pr.id] | translate }}</p>
               </div>
             </div>
           </div>
@@ -807,7 +778,7 @@ export class MappingComponent {
     </section>
   `,
 })
-class ProductsComponent {
+export class ProductsComponent {
   api = inject(ApiService);
   route = inject(ActivatedRoute);
   errs = inject(ErrorI18nService);
@@ -819,10 +790,20 @@ class ProductsComponent {
   cols = ['title', 'sku', 'brand', 'category', 'price', 'currency', 'availability', 'url'];
   selected: Record<string, boolean> = {};
   prompts: ProductPrompt[] = [];
+  groupedPromptItems: { productId: string; productTitle: string; items: ProductPrompt[] }[] = [];
+  selectedCountValue = 0;
+  readonly maxSelectableProducts = 5;
+  readonly promptsPerProduct = 5;
   promptsSuccess = "";
   promptsLoading = false;
   generating = false;
   promptsError = '';
+  generatedPromptCount = 0;
+  selectionNotice = '';
+  promptSaving: Record<string, boolean> = {};
+  promptSaveSuccess: Record<string, boolean> = {};
+  promptSaveError: Record<string, string> = {};
+  private readonly minGenerateLoadingMs = 900;
 
   ngOnInit() {
     this.api.listProducts(this.projectId).subscribe({
@@ -849,30 +830,121 @@ class ProductsComponent {
   }
 
 
-  toggleProduct(id: string, event: Event) { this.selected[id] = (event.target as HTMLInputElement).checked; }
-  selectedCount() { return Object.values(this.selected).filter(Boolean).length; }
+  toggleProduct(id: string, event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.selectionNotice = '';
+    if (checked && this.selectedCountValue >= this.maxSelectableProducts && !this.selected[id]) {
+      this.selected[id] = false;
+      (event.target as HTMLInputElement).checked = false;
+      this.selectionNotice = 'products.selection.maxNotice';
+      return;
+    }
+    this.selected[id] = checked;
+    this.updateSelectedCount();
+  }
+
+  selectAllProducts() {
+    const selectedIds = new Set(this.products.slice(0, this.maxSelectableProducts).map(product => product.id));
+    this.selected = {};
+    for (const product of this.products) this.selected[product.id] = selectedIds.has(product.id);
+    this.selectionNotice = this.products.length > this.maxSelectableProducts ? 'products.selection.maxNotice' : '';
+    this.updateSelectedCount();
+  }
+
+  deselectAllProducts() {
+    this.selected = {};
+    this.selectionNotice = '';
+    this.updateSelectedCount();
+  }
+
+  private updateSelectedCount() {
+    this.selectedCountValue = this.selectedProductIds().length;
+  }
+
+  private selectedProductIds() {
+    return Object.entries(this.selected).filter(([, selected]) => selected).map(([id]) => id);
+  }
+
   productTitle(productId: string) { return this.products.find(p => p.id === productId)?.title || productId; }
-  groupedPrompts() { const map: Record<string, ProductPrompt[]> = {}; for (const p of this.prompts) { map[p.productId] = map[p.productId] || []; map[p.productId].push(p); } return Object.entries(map).map(([productId, items]) => ({ productId, items })); }
+  private updateGroupedPrompts() {
+    const map: Record<string, ProductPrompt[]> = {};
+    for (const prompt of this.prompts) {
+      map[prompt.productId] = map[prompt.productId] || [];
+      map[prompt.productId].push(prompt);
+    }
+    this.groupedPromptItems = Object.entries(map).map(([productId, items]) => ({
+      productId,
+      productTitle: this.productTitle(productId),
+      items,
+    }));
+  }
+
+  private promptsFromGenerateResponse(response: GeneratePromptsResponse) {
+    return Object.values(response.promptsByProduct || {}).flat();
+  }
+
   generatePrompts() {
-    const productIds = Object.entries(this.selected).filter(([,v])=>v).map(([k])=>k);
+    if (this.generating) return;
+    const productIds = this.selectedProductIds();
     if (!productIds.length) { this.promptsError='errors.PROMPT_GENERATION_NO_PRODUCTS'; return; }
+    if (productIds.length > this.maxSelectableProducts) { this.promptsError='errors.PROMPT_GENERATION_LIMIT_EXCEEDED'; return; }
+    const startedAt = Date.now();
     this.generating=true; this.promptsLoading=true; this.promptsError=''; this.promptsSuccess='';
-    this.api.generatePrompts(this.projectId,{productIds,promptsPerProduct:5,language:this.t.currentLang||'fr'}).subscribe({
-      next:()=>this.api.listPrompts(this.projectId).subscribe({next:r=>{this.prompts=r;this.generating=false;this.promptsLoading=false;}}),
-      error:(e:HttpErrorResponse)=>{this.promptsError=this.errs.getKey((e.error as ApiError)?.code);this.generating=false;this.promptsLoading=false;},
+    this.api.generatePrompts(this.projectId,{productIds,promptsPerProduct:this.promptsPerProduct,language:this.t.currentLang||'fr'}).subscribe({
+      next:(response: GeneratePromptsResponse)=>{
+        this.finishGenerateAfterMinimumDelay(startedAt, () => {
+          this.prompts=this.promptsFromGenerateResponse(response);
+          this.generatedPromptCount=response.generatedCount ?? this.prompts.length;
+          this.updateGroupedPrompts();
+          this.promptsSuccess='prompts.generateSuccess';
+          this.generating=false;
+          this.promptsLoading=false;
+          this.scrollToPrompts();
+        });
+      },
+      error:(e:HttpErrorResponse)=>{
+        this.finishGenerateAfterMinimumDelay(startedAt, () => {
+          this.promptsError=this.errs.getKey((e.error as ApiError)?.code);
+          this.generating=false;
+          this.promptsLoading=false;
+        });
+      },
     });
   }
+
+  private finishGenerateAfterMinimumDelay(startedAt: number, finish: () => void) {
+    const remaining = Math.max(0, this.minGenerateLoadingMs - (Date.now() - startedAt));
+    window.setTimeout(finish, remaining);
+  }
+
+  private scrollToPrompts() {
+    window.setTimeout(() => {
+      document.getElementById('prompts-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
   savePrompt(prompt: ProductPrompt) {
     this.promptsError=''; this.promptsSuccess='';
+    this.promptSaveSuccess[prompt.id]=false;
+    this.promptSaveError[prompt.id]='';
+    this.promptSaving[prompt.id]=true;
     this.api.updatePrompt(this.projectId, prompt.id, { text: prompt.text, status: 'edited' }).subscribe({
-      next: updated => { this.prompts = this.prompts.map(p => p.id === updated.id ? updated : p); this.promptsSuccess='prompts.updateSuccess'; },
-      error: (e: HttpErrorResponse) => { this.promptsError=this.errs.getKey((e.error as ApiError)?.code); },
+      next: updated => {
+        this.prompts = this.prompts.map(p => p.id === updated.id ? updated : p);
+        this.updateGroupedPrompts();
+        this.promptSaving[prompt.id]=false;
+        this.promptSaveSuccess[updated.id]=true;
+      },
+      error: () => {
+        this.promptSaving[prompt.id]=false;
+        this.promptSaveError[prompt.id]='prompts.saveError';
+      },
     });
   }
   disablePrompt(prompt: ProductPrompt) {
     this.promptsError=''; this.promptsSuccess='';
     this.api.deletePrompt(this.projectId, prompt.id).subscribe({
-      next:()=>{this.prompts=this.prompts.filter(p=>p.id!==prompt.id); this.promptsSuccess='prompts.deleteSuccess';},
+      next:()=>{this.prompts=this.prompts.filter(p=>p.id!==prompt.id); this.generatedPromptCount=this.prompts.length; this.updateGroupedPrompts(); this.promptsSuccess='prompts.deleteSuccess';},
       error:(e: HttpErrorResponse)=>{this.promptsError=this.errs.getKey((e.error as ApiError)?.code);},
     });
   }

@@ -97,7 +97,7 @@ export class PromptsService {
 
     const requestedPerProduct = Number(body.promptsPerProduct || 5);
     const promptsPerProduct = Math.min(this.maxPromptsPerProduct, Math.max(1, requestedPerProduct));
-    if (productIds.length > this.maxProducts || requestedPerProduct > this.maxPromptsPerProduct || productIds.length * promptsPerProduct >= 25) {
+    if (productIds.length > this.maxProducts || requestedPerProduct > this.maxPromptsPerProduct || productIds.length * promptsPerProduct > this.maxProducts * this.maxPromptsPerProduct) {
       throw new BadRequestException({ code: 'PROMPT_GENERATION_LIMIT_EXCEEDED', message: 'Limit exceeded' });
     }
 

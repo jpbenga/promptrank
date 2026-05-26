@@ -1,8 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { fakeAsync, tick } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
-import { ApiService, AppComponent, MappingComponent, NewProjectComponent } from './app.component';
+import { ApiService, AppComponent, MappingComponent, NewProjectComponent, ProductsComponent } from './app.component';
 
 const translations = {
   app: {
@@ -11,7 +12,7 @@ const translations = {
     language: { fr: 'FR', en: 'EN' },
   },
   nav: { home: 'Accueil', newProject: 'Créer un projet' },
-  common: { back: 'Retour', backHome: "Revenir à l'accueil", create: 'Créer' },
+  common: { back: 'Retour', backHome: "Revenir à l'accueil", create: 'Créer', save: 'Enregistrer', delete: 'Supprimer' },
   flowStepper: {
     ariaLabel: 'Progression du flow CSV',
     status: { completed: 'Terminé', current: 'En cours', upcoming: 'À venir' },
@@ -24,6 +25,7 @@ const translations = {
     savingAndImporting: 'Enregistrement et import...',
     empty: 'Aucune donnée disponible.',
     emptyTitle: 'Aucune donnée à afficher',
+    notAvailable: 'N/A',
   },
   projectCreate: {
     eyebrow: 'Nouveau projet',
@@ -114,6 +116,51 @@ const translations = {
       seoTitle: 'Titre SEO',
       metaDescription: 'Meta description',
     },
+  },
+  products: {
+    eyebrow: 'Résultat',
+    title: 'Produits normalisés',
+    description: 'Contrôlez les produits importés.',
+    empty: 'Aucun produit importé pour le moment.',
+    importAnotherCsv: 'Importer un autre CSV',
+    createAnother: 'Créer un autre projet',
+    summary: { countLabel: 'Produits importés', projectLabel: 'Projet courant' },
+    selection: {
+      selectAll: 'Tout sélectionner',
+      deselectAll: 'Tout désélectionner',
+      count: '{{selected}} produits sélectionnés',
+      maxNotice: 'Seuls {{max}} produits maximum peuvent être sélectionnés pour la génération.',
+    },
+    columns: {
+      title: 'Titre',
+      sku: 'SKU',
+      brand: 'Marque',
+      category: 'Catégorie',
+      price: 'Prix',
+      currency: 'Devise',
+      availability: 'Disponibilité',
+      url: 'URL',
+    },
+  },
+  prompts: {
+    title: 'Prompts',
+    generate: 'Générer des prompts',
+    generating: 'Génération en cours...',
+    generatingDetail: 'Génération des prompts en cours...',
+    generateSuccess: '{{count}} prompts générés.',
+    generatedCount: '{{count}} prompts générés',
+    groupCount: '{{count}} prompts',
+    saving: 'Enregistrement en cours...',
+    saveSuccess: 'Prompt enregistré.',
+    saveError: "Erreur lors de l'enregistrement.",
+    limit: 'Limites locales/demo',
+    limitDetail: '{{maxProducts}} produits maximum / {{promptsPerProduct}} prompts par produit',
+    empty: 'Aucun prompt généré pour le moment.',
+    updateSuccess: 'Prompt mis à jour.',
+    deleteSuccess: 'Prompt désactivé.',
+    status: { proposed: 'proposé', edited: 'édité', disabled: 'désactivé' },
+    source: { template: 'template', manual: 'manual' },
+    intent: { best: 'meilleur' },
   },
   errors: { CSV_MAPPING_MISSING_TITLE: 'Le champ title est obligatoire.' },
 };
@@ -239,21 +286,34 @@ describe('MappingComponent', () => {
 });
 
 describe('ProductsComponent Phase 2 prompts', () => {
+  const products = Array.from({ length: 6 }, (_, index) => ({
+    id: `p${index + 1}`,
+    title: `Produit ${index + 1}`,
+    sku: `S${index + 1}`,
+    brand: 'B',
+    category: 'C',
+    price: 10,
+    currency: 'EUR',
+    availability: 'in_stock',
+  }));
+  const prompt = { id: 'pr1', projectId: 'x', productId: 'p1', text: 'meilleur produit', status: 'proposed', intent: 'best', source: 'template', language: 'fr', country: 'FR', position: 0, createdAt: '', updatedAt: '' };
+  let apiMock: any;
+
   beforeEach(async () => {
+    apiMock = {
+      listProducts: () => of(products),
+      generatePrompts: () => of({ generatedCount: 1, promptsByProduct: { p1: [prompt] } }),
+      listPrompts: () => of([prompt]),
+      updatePrompt: () => of({ ...prompt, text: 'modifié', status: 'edited', source: 'manual' }),
+      deletePrompt: () => of({}),
+    };
+
     await TestBed.configureTestingModule({
-      imports: [AppComponent, configureTranslate()],
+      imports: [AppComponent, ProductsComponent, configureTranslate()],
       providers: [
         provideRouter([{ path: 'projects/:id/products', component: (AppComponent as any) }]),
-        {
-          provide: ApiService,
-          useValue: {
-            listProducts: () => of([{ id: 'p1', title: 'Produit 1', sku: 'S1', brand: 'B', category: 'C', price: 10, currency: 'EUR', availability: 'in_stock' }]),
-            generatePrompts: () => of({ generatedCount: 1, promptsByProduct: {} }),
-            listPrompts: () => of([{ id: 'pr1', projectId: 'x', productId: 'p1', text: 'meilleur produit', status: 'proposed', intent: 'best', source: 'template', language: 'fr', country: 'FR', position: 0, createdAt: '', updatedAt: '' }]),
-            updatePrompt: () => of({ id: 'pr1', projectId: 'x', productId: 'p1', text: 'modifié', status: 'edited', intent: 'best', source: 'manual', language: 'fr', country: 'FR', position: 0, createdAt: '', updatedAt: '' }),
-            deletePrompt: () => of({}),
-          },
-        },
+        { provide: ApiService, useValue: apiMock },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'project-1' } } } },
       ],
     }).compileComponents();
   });
@@ -263,4 +323,41 @@ describe('ProductsComponent Phase 2 prompts', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('PromptRank');
   });
+
+  it('shows selection actions above the products table and caps select all at five products', async () => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Tout sélectionner');
+    expect(text).toContain('Tout désélectionner');
+    expect(text).toContain('5 produits maximum');
+    expect(text.indexOf('Tout sélectionner')).toBeLessThan(text.indexOf('Titre'));
+
+    fixture.componentInstance.selectAllProducts();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selectedCountValue).toBe(5);
+    expect(fixture.nativeElement.textContent).toContain('Seuls 5 produits maximum');
+  });
+
+  it('keeps generation loading visible briefly and then shows grouped prompts', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.selectAllProducts();
+    fixture.detectChanges();
+
+    fixture.componentInstance.generatePrompts();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Génération des prompts en cours...');
+
+    tick(900);
+    tick();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('1 prompts générés');
+    expect(fixture.nativeElement.textContent).toContain('Produit 1');
+    expect(fixture.nativeElement.querySelector('#prompts-section')).toBeTruthy();
+  }));
 });

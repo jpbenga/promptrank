@@ -21,6 +21,8 @@ function loadEnvFile(filePath: string) {
 loadEnvFile(resolve(__dirname, '../../.env'));
 loadEnvFile(resolve(__dirname, '../../.env.example'));
 
+jest.setTimeout(60000);
+
 describe('Phase 1 CSV API integration', () => {
   let app: INestApplication;
   let prisma: PrismaService;

@@ -215,6 +215,12 @@
       "countLabel": "Imported products",
       "projectLabel": "Current project"
     },
+    "selection": {
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "count": "{{selected}} products selected",
+      "maxNotice": "Only {{max}} products maximum can be selected for generation."
+    },
     "columns": {
       "title": "Title",
       "sku": "SKU",
@@ -246,6 +252,14 @@
   "prompts": {
     "title": "Prompts",
     "generate": "Generate prompts",
+    "generating": "Generating...",
+    "generatingDetail": "Generating prompts...",
+    "generateSuccess": "{{count}} prompts generated.",
+    "generatedCount": "{{count}} prompts generated",
+    "groupCount": "{{count}} prompts",
+    "saving": "Saving...",
+    "saveSuccess": "Prompt saved.",
+    "saveError": "Error while saving.",
     "limit": "Local/demo limits",
     "limitDetail": "Maximum {{maxProducts}} products / {{promptsPerProduct}} prompts per product",
     "empty": "No prompts generated yet.",
