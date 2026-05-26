@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, PromptIntent, PromptSource, PromptStatus, UpdatePromptRequest } from '@promptrank/shared-types';
-import type { ProductPrompt as PrismaProductPrompt } from '@prisma/client';
+import type { AnalyzePromptsRequest, AnalyzePromptsResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, PromptAnalysisResult, PromptIntent, PromptRun, PromptRunSentiment, PromptSource, PromptStatus, UpdatePromptRequest } from '@promptrank/shared-types';
+import type { ProductPrompt as PrismaProductPrompt, PromptRun as PrismaPromptRun } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 
 type ProductRecord = {
@@ -55,6 +55,38 @@ export class PromptsService {
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     };
+  }
+
+
+  private competitorDictionary = ['Stanley', 'Quechua', 'Decathlon', 'Nike', 'Adidas', 'Apple', 'Samsung', 'Amazon Basics', 'Anker'];
+
+  private toPromptRunDto(run: PrismaPromptRun): PromptRun {
+    return { ...run, provider: 'mock', model: 'mock-v1', status: run.status as 'completed' | 'failed', sentiment: run.sentiment as PromptRunSentiment, competitorsMentioned: Array.isArray(run.competitorsMentioned) ? run.competitorsMentioned.map(String) : [], position: run.position ?? null, createdAt: run.createdAt.toISOString(), updatedAt: run.updatedAt.toISOString() };
+  }
+
+  private simulateResponse(prompt: PrismaProductPrompt, product: ProductRecord): string {
+    const seed = (prompt.text + (product.title || '') + (product.brand || '')).length % 5;
+    const brand = product.brand || 'Cette marque';
+    const title = product.title || 'ce produit';
+    const competitors = this.competitorDictionary.slice(seed, seed + 2);
+    const prefix = prompt.language.startsWith('fr') ? 'Pour ce besoin' : 'For this need';
+    if (seed === 0) return `${prefix}, ${brand} est une option pertinente. ${title} peut convenir. Alternatives: ${competitors.join(' et ')}.`;
+    if (seed === 1) return `${prefix}, ${title} est souvent cité. Des alternatives incluent ${competitors.join(' and ')}.`;
+    if (seed === 2) return `${prefix}, des options comme ${competitors.join(' et ')} sont souvent recommandées.`;
+    if (seed === 3) return `${prefix}, cette option reste correcte sans avantage clair.`;
+    return `${prefix}, ${brand} peut être envisagé mais certains retours sont mitigés.`;
+  }
+
+  private analyzeResponse(text: string, product: ProductRecord): Pick<PromptRun, 'brandMentioned'|'productMentioned'|'competitorsMentioned'|'position'|'sentiment'> {
+    const lower = text.toLowerCase();
+    const brand = (product.brand || '').toLowerCase();
+    const title = (product.title || '').toLowerCase();
+    const brandMentioned = !!brand && lower.includes(brand);
+    const productMentioned = !!title && (lower.includes(title) || lower.includes(title.split(' ').slice(0,3).join(' ')));
+    const competitorsMentioned = this.competitorDictionary.filter(c => lower.includes(c.toLowerCase()));
+    const idx = [brand ? lower.indexOf(brand) : -1, title ? lower.indexOf(title) : -1].filter(i => i >= 0).sort((a,b)=>a-b)[0];
+    const sentiment: PromptRunSentiment = /(pertinent|recommand|excellent|good|best)/.test(lower) ? 'positive' : /(mitig|mauvais|bad|avoid|risque)/.test(lower) ? 'negative' : /(correcte|correct|option|can)/.test(lower) ? 'neutral' : 'unknown';
+    return { brandMentioned, productMentioned, competitorsMentioned, position: idx === undefined ? null : 1, sentiment };
   }
 
   private containsBpa(data: ProductRecord): boolean {
@@ -165,4 +197,30 @@ export class PromptsService {
       .update({ where: { id: promptId }, data: { status: 'disabled' } })
       .then(updated => this.toProductPromptDto(updated));
   }
+
+  async analyze(projectId: string, body: AnalyzePromptsRequest): Promise<AnalyzePromptsResponse> {
+    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: 'Project not found' });
+    if (!body.promptIds?.length) throw new BadRequestException({ code: 'PROMPT_ANALYSIS_NO_PROMPTS', message: 'No prompt selected' });
+    if (body.promptIds.length > 25) throw new BadRequestException({ code: 'PROMPT_ANALYSIS_LIMIT_EXCEEDED', message: 'Limit exceeded' });
+    const prompts = await this.prisma.productPrompt.findMany({ where: { id: { in: body.promptIds }, projectId } });
+    if (prompts.length !== body.promptIds.length) throw new NotFoundException({ code: 'PROMPT_NOT_FOUND', message: 'Prompt not found' });
+    const products = await this.prisma.product.findMany({ where: { id: { in: prompts.map(p=>p.productId) }, projectId } }) as ProductRecord[];
+    const map = new Map(products.map(p=>[p.id,p]));
+    try {
+      const results: PromptAnalysisResult[] = [];
+      for (const prompt of prompts) {
+        const product = map.get(prompt.productId)!;
+        const responseText = this.simulateResponse(prompt, product);
+        const analysis = this.analyzeResponse(responseText, product);
+        const run = await this.prisma.promptRun.create({ data: { projectId, productId: prompt.productId, promptId: prompt.id, provider: 'mock', model: 'mock-v1', responseText, ...analysis, status: 'completed' } });
+        results.push({ prompt: this.toProductPromptDto(prompt), run: this.toPromptRunDto(run) });
+      }
+      return { results };
+    } catch { throw new BadRequestException({ code: 'PROMPT_ANALYSIS_FAILED', message: 'Prompt analysis failed' }); }
+  }
+
+  listRunsByProject(projectId: string): Promise<PromptRun[]> { return this.prisma.promptRun.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' } }).then(r=>r.map(x=>this.toPromptRunDto(x))); }
+  listRunsByPrompt(projectId: string, promptId: string): Promise<PromptRun[]> { return this.prisma.promptRun.findMany({ where: { projectId, promptId }, orderBy: { createdAt: 'desc' } }).then(r=>r.map(x=>this.toPromptRunDto(x))); }
+  listRunsByProduct(projectId: string, productId: string): Promise<PromptRun[]> { return this.prisma.promptRun.findMany({ where: { projectId, productId }, orderBy: { createdAt: 'desc' } }).then(r=>r.map(x=>this.toPromptRunDto(x))); }
 }

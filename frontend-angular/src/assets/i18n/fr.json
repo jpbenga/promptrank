@@ -247,7 +247,10 @@
     "PROMPT_GENERATION_NO_PRODUCTS": "Aucun produit sélectionné.",
     "PRODUCT_NOT_FOUND": "Produit introuvable.",
     "PROMPT_NOT_FOUND": "Prompt introuvable.",
-    "PROMPT_UPDATE_INVALID": "Mise à jour de prompt invalide."
+    "PROMPT_UPDATE_INVALID": "Mise à jour de prompt invalide.",
+    "PROMPT_ANALYSIS_NO_PROMPTS": "Aucun prompt sélectionné",
+    "PROMPT_ANALYSIS_LIMIT_EXCEEDED": "Limite de 25 prompts dépassée",
+    "PROMPT_ANALYSIS_FAILED": "Échec de l’analyse simulée"
   },
   "prompts": {
     "title": "Prompts",
@@ -284,5 +287,20 @@
       "gift": "cadeau",
       "local": "local"
     }
+  },
+  "simAnalysis": {
+    "title": "Analyse simulée",
+    "analyze": "Analyser les réponses simulées",
+    "response": "Réponse simulée",
+    "brand": "Marque mentionnée",
+    "product": "Produit mentionné",
+    "competitors": "Concurrents mentionnés",
+    "position": "Position",
+    "sentiment": "Sentiment",
+    "mockNotice": "Simulation sans appel IA réel",
+    "loading": "Analyse en cours",
+    "done": "Analyse terminée",
+    "noPrompt": "Aucun prompt sélectionné",
+    "empty": "Aucun résultat d’analyse"
   }
 }

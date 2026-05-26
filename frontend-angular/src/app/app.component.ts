@@ -5,7 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute, Router, pro
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 
-import type { GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, UpdatePromptRequest } from '@promptrank/shared-types';
+import type { AnalyzePromptsResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, PromptRun, UpdatePromptRequest } from '@promptrank/shared-types';
 type ApiError = { code?: string; message?: string };
 const API_URL = 'http://localhost:3000';
 const CSV_MAX_FILE_SIZE_MB = 5;
@@ -44,6 +44,7 @@ export class ApiService {
   listPrompts(projectId: string) { return this.http.get<ProductPrompt[]>(`${API_URL}/projects/${projectId}/prompts`); }
   updatePrompt(projectId: string, promptId: string, payload: UpdatePromptRequest) { return this.http.patch<ProductPrompt>(`${API_URL}/projects/${projectId}/prompts/${promptId}`, payload); }
   deletePrompt(projectId: string, promptId: string) { return this.http.delete<any>(`${API_URL}/projects/${projectId}/prompts/${promptId}`); }
+  analyzePrompts(projectId: string, promptIds: string[]) { return this.http.post<AnalyzePromptsResponse>(`${API_URL}/projects/${projectId}/prompts/analyze`, { promptIds }); }
 }
 
 @Component({
@@ -396,6 +397,20 @@ class UploadComponent {
             </table>
           </div>
         </div>
+
+        <div class="rounded-2xl border border-purple-200 bg-purple-50 p-4" *ngIf="prompts.length">
+          <h3 class="text-lg font-bold">{{ 'simAnalysis.title' | translate }}</h3>
+          <p class="text-sm text-purple-800">{{ 'simAnalysis.mockNotice' | translate }}</p>
+          <button type="button" (click)="analyzeSelectedPrompts()" [disabled]="analysisLoading" class="mt-3 rounded-lg bg-purple-700 px-3 py-2 text-sm font-semibold text-white">{{ 'simAnalysis.analyze' | translate }}</button>
+          <p class="mt-2 text-sm text-blue-700" *ngIf="analysisLoading">{{ 'simAnalysis.loading' | translate }}</p>
+          <p class="mt-2 text-sm text-green-700" *ngIf="analysisSuccess">{{ analysisSuccess | translate }}</p>
+          <p class="mt-2 text-sm text-red-700" *ngIf="analysisError">{{ analysisError | translate }}</p>
+          <p class="mt-2 text-sm" *ngIf="!runs.length">{{ 'simAnalysis.empty' | translate }}</p>
+          <div *ngFor="let r of runs" class="mt-3 rounded border bg-white p-3 text-sm">
+            <p><b>Prompt:</b> {{ r.prompt.text }}</p><p><b>{{ 'simAnalysis.response' | translate }}:</b> {{ r.run.responseText }}</p>
+          </div>
+        </div>
+
       </ng-container>
     </section>
   `,
@@ -755,6 +770,7 @@ export class MappingComponent {
             </div>
             <div class="mt-3 space-y-3">
               <div *ngFor="let pr of group.items" class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <label class='mb-2 inline-flex items-center gap-2 text-xs'><input type='checkbox' [checked]='selectedPrompts[pr.id]' (change)='togglePromptSelection(pr.id, $event)'/> {{ 'simAnalysis.analyze' | translate }}</label>
                 <div class="mb-2 flex flex-wrap gap-2 text-xs">
                   <span class="rounded bg-slate-100 px-2 py-0.5">{{ promptStatusKey(pr.status) | translate }}</span>
                   <span class="rounded bg-blue-50 px-2 py-0.5">{{ promptIntentKey(pr.intent) | translate }}</span>
@@ -774,6 +790,20 @@ export class MappingComponent {
             </div>
           </div>
         </div>
+
+        <div class="rounded-2xl border border-purple-200 bg-purple-50 p-4" *ngIf="prompts.length">
+          <h3 class="text-lg font-bold">{{ 'simAnalysis.title' | translate }}</h3>
+          <p class="text-sm text-purple-800">{{ 'simAnalysis.mockNotice' | translate }}</p>
+          <button type="button" (click)="analyzeSelectedPrompts()" [disabled]="analysisLoading" class="mt-3 rounded-lg bg-purple-700 px-3 py-2 text-sm font-semibold text-white">{{ 'simAnalysis.analyze' | translate }}</button>
+          <p class="mt-2 text-sm text-blue-700" *ngIf="analysisLoading">{{ 'simAnalysis.loading' | translate }}</p>
+          <p class="mt-2 text-sm text-green-700" *ngIf="analysisSuccess">{{ analysisSuccess | translate }}</p>
+          <p class="mt-2 text-sm text-red-700" *ngIf="analysisError">{{ analysisError | translate }}</p>
+          <p class="mt-2 text-sm" *ngIf="!runs.length">{{ 'simAnalysis.empty' | translate }}</p>
+          <div *ngFor="let r of runs" class="mt-3 rounded border bg-white p-3 text-sm">
+            <p><b>Prompt:</b> {{ r.prompt.text }}</p><p><b>{{ 'simAnalysis.response' | translate }}:</b> {{ r.run.responseText }}</p>
+          </div>
+        </div>
+
       </ng-container>
     </section>
   `,
@@ -803,6 +833,12 @@ export class ProductsComponent {
   promptSaving: Record<string, boolean> = {};
   promptSaveSuccess: Record<string, boolean> = {};
   promptSaveError: Record<string, string> = {};
+  selectedPrompts: Record<string, boolean> = {};
+  runs: { prompt: ProductPrompt; run: PromptRun }[] = [];
+  analysisLoading = false;
+  analysisError = '';
+  analysisSuccess = '';
+
   private readonly minGenerateLoadingMs = 900;
 
   ngOnInit() {
@@ -952,6 +988,18 @@ export class ProductsComponent {
   promptStatusKey(status: string) { return `prompts.status.${status}`; }
   promptIntentKey(intent: string) { return `prompts.intent.${intent}`; }
   promptSourceKey(source: string) { return `prompts.source.${source}`; }
+
+  togglePromptSelection(promptId: string, event: Event) { this.selectedPrompts[promptId] = (event.target as HTMLInputElement).checked; }
+
+  analyzeSelectedPrompts() {
+    const ids = Object.entries(this.selectedPrompts).filter(([,v])=>v).map(([id])=>id);
+    if (!ids.length) { this.analysisError = 'errors.PROMPT_ANALYSIS_NO_PROMPTS'; return; }
+    this.analysisLoading = true; this.analysisError=''; this.analysisSuccess='';
+    this.api.analyzePrompts(this.projectId, ids).subscribe({
+      next: (response) => { this.runs = response.results; this.analysisLoading = false; this.analysisSuccess='simAnalysis.done'; },
+      error: (e: HttpErrorResponse) => { this.analysisLoading = false; this.analysisError = this.errs.getKey((e.error as ApiError)?.code); },
+    });
+  }
 
   availabilityClass(value?: string) {
     const normalized = (value || '').toLowerCase();

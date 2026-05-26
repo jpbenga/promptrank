@@ -20,7 +20,9 @@ model Project {
   mappings        CsvColumnMapping[]
   products        Product[]
   prompts         ProductPrompt[]
+  promptRuns      PromptRun[]
 }
+
 
 model CsvImport {
   id                String             @id @default(cuid())
@@ -79,7 +81,9 @@ model Product {
   updatedAt       DateTime @updatedAt
   project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   prompts         ProductPrompt[]
+  promptRuns      PromptRun[]
 }
+
 
 model ProductPrompt {
   id        String   @id @default(cuid())
@@ -96,6 +100,32 @@ model ProductPrompt {
   updatedAt DateTime @updatedAt
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  runs      PromptRun[]
 
   @@index([projectId, productId])
 }
+
+model PromptRun {
+  id                   String   @id @default(cuid())
+  projectId            String
+  productId            String
+  promptId             String
+  provider             String   @default("mock")
+  model                String   @default("mock-v1")
+  responseText         String
+  brandMentioned       Boolean
+  productMentioned     Boolean
+  competitorsMentioned Json
+  position             Int?
+  sentiment            String   @default("unknown")
+  status               String   @default("completed")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  product              Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  prompt               ProductPrompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, promptId])
+  @@index([projectId, productId])
+}
+
