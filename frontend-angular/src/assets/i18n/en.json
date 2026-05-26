@@ -247,7 +247,10 @@
     "PROMPT_GENERATION_NO_PRODUCTS": "No product selected.",
     "PRODUCT_NOT_FOUND": "Product not found.",
     "PROMPT_NOT_FOUND": "Prompt not found.",
-    "PROMPT_UPDATE_INVALID": "Invalid prompt update."
+    "PROMPT_UPDATE_INVALID": "Invalid prompt update.",
+    "PROMPT_ANALYSIS_NO_PROMPTS": "No prompt selected",
+    "PROMPT_ANALYSIS_LIMIT_EXCEEDED": "25 prompts limit exceeded",
+    "PROMPT_ANALYSIS_FAILED": "Simulated analysis failed"
   },
   "prompts": {
     "title": "Prompts",
@@ -284,5 +287,20 @@
       "gift": "gift",
       "local": "local"
     }
+  },
+  "simAnalysis": {
+    "title": "Simulated analysis",
+    "analyze": "Analyze simulated responses",
+    "response": "Simulated response",
+    "brand": "Brand mentioned",
+    "product": "Product mentioned",
+    "competitors": "Competitors mentioned",
+    "position": "Position",
+    "sentiment": "Sentiment",
+    "mockNotice": "Simulation without real AI call",
+    "loading": "Analysis in progress",
+    "done": "Analysis completed",
+    "noPrompt": "No prompt selected",
+    "empty": "No analysis result"
   }
 }

@@ -137,3 +137,13 @@ Redis est volontairement hors périmètre Phase 1. Il sera introduit plus tard s
 - respect des limites 5 produits / 5 prompts / 25 total ;
 - textes prompts i18n FR/EN ;
 - non-régression des tests Phase 1 (CSV) conservée.
+
+## Phase 3 — Analyse simulée
+
+Flow: prompts → réponses simulées → analyse déterministe. Cette phase n'appelle aucune API IA réelle (OpenAI/Gemini/Perplexity).
+
+Limites local/demo: 25 prompts max par analyse.
+
+### Dette technique
+- E2E Phase 2 complet à renforcer plus tard.
+- E2E Phase 3 complet à envisager après stabilisation.

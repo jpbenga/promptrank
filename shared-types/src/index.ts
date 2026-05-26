@@ -6,7 +6,11 @@ export type ApiErrorCode =
   | 'CSV_NO_COLUMNS_FOUND'
   | 'CSV_MAPPING_MISSING_TITLE'
   | 'PROJECT_NOT_FOUND'
-  | 'PRODUCT_IMPORT_FAILED';
+  | 'PRODUCT_IMPORT_FAILED'
+  | 'PROMPT_ANALYSIS_NO_PROMPTS'
+  | 'PROMPT_ANALYSIS_LIMIT_EXCEEDED'
+  | 'PROMPT_ANALYSIS_FAILED'
+  | 'PROMPT_NOT_FOUND';
 
 export type NormalizedProduct = {
   id: string;
@@ -92,3 +96,30 @@ export type UpdatePromptRequest = {
   text?: string;
   status?: PromptStatus;
 };
+
+
+export type PromptRunProvider = 'mock';
+export type PromptRunStatus = 'completed' | 'failed';
+export type PromptRunSentiment = 'positive' | 'neutral' | 'negative' | 'unknown';
+
+export type PromptRun = {
+  id: string;
+  projectId: string;
+  productId: string;
+  promptId: string;
+  provider: PromptRunProvider;
+  model: 'mock-v1';
+  responseText: string;
+  brandMentioned: boolean;
+  productMentioned: boolean;
+  competitorsMentioned: string[];
+  position: number | null;
+  sentiment: PromptRunSentiment;
+  status: PromptRunStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AnalyzePromptsRequest = { promptIds: string[] };
+export type PromptAnalysisResult = { prompt: ProductPrompt; run: PromptRun };
+export type AnalyzePromptsResponse = { results: PromptAnalysisResult[] };
