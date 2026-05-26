@@ -3,7 +3,7 @@ import { fakeAsync, tick } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
-import { ApiService, AppComponent, MappingComponent, NewProjectComponent, ProductsComponent } from './app.component';
+import { ApiService, AppComponent, MappingComponent, NewProjectComponent, PreviewComponent, ProductsComponent } from './app.component';
 
 const translations = {
   app: {
@@ -58,6 +58,20 @@ const translations = {
         errors: { required: 'Devise obligatoire.', pattern: 'Trois lettres majuscules.' },
       },
     },
+  },
+  csvPreview: {
+    eyebrow: 'Aperçu',
+    title: 'Aperçu CSV',
+    description: 'Vérifiez rapidement la structure détectée.',
+    delimiter: 'Séparateur détecté',
+    columnCount: 'Nombre de colonnes',
+    rowCount: 'Nombre de lignes',
+    columns: 'Colonnes détectées',
+    tableTitle: 'Aperçu des lignes',
+    tableHelp: 'La preview affiche uniquement les 20 premières lignes du fichier.',
+    continue: 'Continuer vers le mapping',
+    empty: 'Importez un CSV pour générer un aperçu.',
+    tabDelimiter: 'Tabulation',
   },
   csvMapping: {
     eyebrow: 'Mapping',
@@ -162,7 +176,19 @@ const translations = {
     source: { template: 'template', manual: 'manual' },
     intent: { best: 'meilleur' },
   },
-  errors: { CSV_MAPPING_MISSING_TITLE: 'Le champ title est obligatoire.' },
+  simAnalysis: {
+    title: 'Analyse simulée',
+    analyze: 'Analyser les réponses simulées',
+    response: 'Réponse simulée',
+    mockNotice: 'Simulation sans appel IA réel',
+    loading: 'Analyse en cours',
+    done: 'Analyse terminée',
+    empty: "Aucun résultat d'analyse",
+  },
+  errors: {
+    CSV_MAPPING_MISSING_TITLE: 'Le champ title est obligatoire.',
+    PROMPT_ANALYSIS_NO_PROMPTS: 'Aucun prompt sélectionné',
+  },
 };
 
 class TestTranslateLoader implements TranslateLoader {
@@ -241,6 +267,50 @@ describe('NewProjectComponent', () => {
   });
 });
 
+describe('PreviewComponent', () => {
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [PreviewComponent, configureTranslate()],
+      providers: [
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: { get: () => 'p1' } } },
+        },
+      ],
+    }).compileComponents();
+  });
+
+  it('renders detected CSV columns and preview rows', () => {
+    const fixture = TestBed.createComponent(PreviewComponent);
+    fixture.componentInstance.preview = {
+      id: 'csv1',
+      detectedDelimiter: ';',
+      rowCount: 2,
+      columns: ['nom_produit', 'prix_ttc'],
+      previewRows: [
+        { nom_produit: 'Gourde inox', prix_ttc: '24.90' },
+        { nom_produit: 'Lampe LED', prix_ttc: '39.00' },
+      ],
+    };
+
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+
+    expect(text).toContain('Séparateur détecté');
+    expect(text).toContain(';');
+    expect(text).toContain('Nombre de colonnes');
+    expect(text).toContain('2');
+    expect(text).toContain('Colonnes détectées');
+    expect(text).toContain('nom_produit');
+    expect(text).toContain('prix_ttc');
+    expect(text).toContain('Gourde inox');
+    expect(text).toContain('Lampe LED');
+    expect(text).toContain('Continuer vers le mapping');
+    expect(text).not.toContain('Analyse simulée');
+  });
+});
+
 describe('MappingComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -306,6 +376,7 @@ describe('ProductsComponent Phase 2 prompts', () => {
       listPrompts: () => of([prompt]),
       updatePrompt: () => of({ ...prompt, text: 'modifié', status: 'edited', source: 'manual' }),
       deletePrompt: () => of({}),
+      analyzePrompts: () => of({ results: [{ prompt, run: { responseText: 'Réponse simulée test' } }] }),
     };
 
     await TestBed.configureTestingModule({
@@ -359,5 +430,40 @@ describe('ProductsComponent Phase 2 prompts', () => {
     expect(fixture.nativeElement.textContent).toContain('1 prompts générés');
     expect(fixture.nativeElement.textContent).toContain('Produit 1');
     expect(fixture.nativeElement.querySelector('#prompts-section')).toBeTruthy();
+  }));
+
+  it('disables simulated analysis until a prompt is selected and keeps loading visible for one second', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.selectAllProducts();
+    fixture.componentInstance.generatePrompts();
+    tick(900);
+    tick();
+    fixture.detectChanges();
+
+    const analyzeButton = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'))
+      .find(button => button.textContent?.includes('Analyser les réponses simulées')) as HTMLButtonElement;
+    expect(analyzeButton.disabled).toBeTrue();
+
+    fixture.componentInstance.togglePromptSelection('pr1', { target: { checked: true } } as unknown as Event);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selectedPromptCountValue).toBe(1);
+    expect(analyzeButton.disabled).toBeFalse();
+
+    fixture.componentInstance.analyzeSelectedPrompts();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Analyse en cours');
+    expect(fixture.componentInstance.runs.length).toBe(0);
+
+    tick(999);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.analysisLoading).toBeTrue();
+    expect(fixture.componentInstance.runs.length).toBe(0);
+
+    tick(1);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.analysisLoading).toBeFalse();
+    expect(fixture.nativeElement.textContent).toContain('Réponse simulée test');
   }));
 });

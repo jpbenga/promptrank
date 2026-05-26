@@ -398,24 +398,11 @@ class UploadComponent {
           </div>
         </div>
 
-        <div class="rounded-2xl border border-purple-200 bg-purple-50 p-4" *ngIf="prompts.length">
-          <h3 class="text-lg font-bold">{{ 'simAnalysis.title' | translate }}</h3>
-          <p class="text-sm text-purple-800">{{ 'simAnalysis.mockNotice' | translate }}</p>
-          <button type="button" (click)="analyzeSelectedPrompts()" [disabled]="analysisLoading" class="mt-3 rounded-lg bg-purple-700 px-3 py-2 text-sm font-semibold text-white">{{ 'simAnalysis.analyze' | translate }}</button>
-          <p class="mt-2 text-sm text-blue-700" *ngIf="analysisLoading">{{ 'simAnalysis.loading' | translate }}</p>
-          <p class="mt-2 text-sm text-green-700" *ngIf="analysisSuccess">{{ analysisSuccess | translate }}</p>
-          <p class="mt-2 text-sm text-red-700" *ngIf="analysisError">{{ analysisError | translate }}</p>
-          <p class="mt-2 text-sm" *ngIf="!runs.length">{{ 'simAnalysis.empty' | translate }}</p>
-          <div *ngFor="let r of runs" class="mt-3 rounded border bg-white p-3 text-sm">
-            <p><b>Prompt:</b> {{ r.prompt.text }}</p><p><b>{{ 'simAnalysis.response' | translate }}:</b> {{ r.run.responseText }}</p>
-          </div>
-        </div>
-
       </ng-container>
     </section>
   `,
 })
-class PreviewComponent {
+export class PreviewComponent {
   private t = inject(TranslateService);
   route = inject(ActivatedRoute);
   preview: any = history.state?.preview;
@@ -770,7 +757,7 @@ export class MappingComponent {
             </div>
             <div class="mt-3 space-y-3">
               <div *ngFor="let pr of group.items" class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                <label class='mb-2 inline-flex items-center gap-2 text-xs'><input type='checkbox' [checked]='selectedPrompts[pr.id]' (change)='togglePromptSelection(pr.id, $event)'/> {{ 'simAnalysis.analyze' | translate }}</label>
+	                <label class='mb-2 inline-flex items-center gap-2 text-xs'><input type='checkbox' [checked]='selectedPrompts[pr.id]' [disabled]="analysisLoading" (change)='togglePromptSelection(pr.id, $event)'/> {{ 'simAnalysis.analyze' | translate }}</label>
                 <div class="mb-2 flex flex-wrap gap-2 text-xs">
                   <span class="rounded bg-slate-100 px-2 py-0.5">{{ promptStatusKey(pr.status) | translate }}</span>
                   <span class="rounded bg-blue-50 px-2 py-0.5">{{ promptIntentKey(pr.intent) | translate }}</span>
@@ -794,7 +781,10 @@ export class MappingComponent {
         <div class="rounded-2xl border border-purple-200 bg-purple-50 p-4" *ngIf="prompts.length">
           <h3 class="text-lg font-bold">{{ 'simAnalysis.title' | translate }}</h3>
           <p class="text-sm text-purple-800">{{ 'simAnalysis.mockNotice' | translate }}</p>
-          <button type="button" (click)="analyzeSelectedPrompts()" [disabled]="analysisLoading" class="mt-3 rounded-lg bg-purple-700 px-3 py-2 text-sm font-semibold text-white">{{ 'simAnalysis.analyze' | translate }}</button>
+	          <button type="button" (click)="analyzeSelectedPrompts()" [disabled]="selectedPromptCountValue === 0 || analysisLoading" class="mt-3 inline-flex items-center justify-center rounded-lg bg-purple-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+	            <span class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" *ngIf="analysisLoading"></span>
+	            {{ (analysisLoading ? 'simAnalysis.loading' : 'simAnalysis.analyze') | translate }}
+	          </button>
           <p class="mt-2 text-sm text-blue-700" *ngIf="analysisLoading">{{ 'simAnalysis.loading' | translate }}</p>
           <p class="mt-2 text-sm text-green-700" *ngIf="analysisSuccess">{{ analysisSuccess | translate }}</p>
           <p class="mt-2 text-sm text-red-700" *ngIf="analysisError">{{ analysisError | translate }}</p>
@@ -834,12 +824,14 @@ export class ProductsComponent {
   promptSaveSuccess: Record<string, boolean> = {};
   promptSaveError: Record<string, string> = {};
   selectedPrompts: Record<string, boolean> = {};
+  selectedPromptCountValue = 0;
   runs: { prompt: ProductPrompt; run: PromptRun }[] = [];
   analysisLoading = false;
   analysisError = '';
   analysisSuccess = '';
 
   private readonly minGenerateLoadingMs = 900;
+  private readonly minAnalyzeLoadingMs = 1000;
 
   ngOnInit() {
     this.api.listProducts(this.projectId).subscribe({
@@ -928,7 +920,7 @@ export class ProductsComponent {
     this.generating=true; this.promptsLoading=true; this.promptsError=''; this.promptsSuccess='';
     this.api.generatePrompts(this.projectId,{productIds,promptsPerProduct:this.promptsPerProduct,language:this.t.currentLang||'fr'}).subscribe({
       next:(response: GeneratePromptsResponse)=>{
-        this.finishGenerateAfterMinimumDelay(startedAt, () => {
+        this.finishAfterMinimumDelay(startedAt, this.minGenerateLoadingMs, () => {
           this.prompts=this.promptsFromGenerateResponse(response);
           this.generatedPromptCount=response.generatedCount ?? this.prompts.length;
           this.updateGroupedPrompts();
@@ -939,7 +931,7 @@ export class ProductsComponent {
         });
       },
       error:(e:HttpErrorResponse)=>{
-        this.finishGenerateAfterMinimumDelay(startedAt, () => {
+        this.finishAfterMinimumDelay(startedAt, this.minGenerateLoadingMs, () => {
           this.promptsError=this.errs.getKey((e.error as ApiError)?.code);
           this.generating=false;
           this.promptsLoading=false;
@@ -948,8 +940,8 @@ export class ProductsComponent {
     });
   }
 
-  private finishGenerateAfterMinimumDelay(startedAt: number, finish: () => void) {
-    const remaining = Math.max(0, this.minGenerateLoadingMs - (Date.now() - startedAt));
+  private finishAfterMinimumDelay(startedAt: number, minimumMs: number, finish: () => void) {
+    const remaining = Math.max(0, minimumMs - (Date.now() - startedAt));
     window.setTimeout(finish, remaining);
   }
 
@@ -989,15 +981,36 @@ export class ProductsComponent {
   promptIntentKey(intent: string) { return `prompts.intent.${intent}`; }
   promptSourceKey(source: string) { return `prompts.source.${source}`; }
 
-  togglePromptSelection(promptId: string, event: Event) { this.selectedPrompts[promptId] = (event.target as HTMLInputElement).checked; }
+  togglePromptSelection(promptId: string, event: Event) {
+    this.selectedPrompts[promptId] = (event.target as HTMLInputElement).checked;
+    this.updateSelectedPromptCount();
+    this.analysisError = '';
+  }
+
+  private updateSelectedPromptCount() {
+    this.selectedPromptCountValue = Object.values(this.selectedPrompts).filter(Boolean).length;
+  }
 
   analyzeSelectedPrompts() {
+    if (this.analysisLoading) return;
     const ids = Object.entries(this.selectedPrompts).filter(([,v])=>v).map(([id])=>id);
     if (!ids.length) { this.analysisError = 'errors.PROMPT_ANALYSIS_NO_PROMPTS'; return; }
-    this.analysisLoading = true; this.analysisError=''; this.analysisSuccess='';
+    const startedAt = Date.now();
+    this.analysisLoading = true; this.analysisError=''; this.analysisSuccess=''; this.runs=[];
     this.api.analyzePrompts(this.projectId, ids).subscribe({
-      next: (response) => { this.runs = response.results; this.analysisLoading = false; this.analysisSuccess='simAnalysis.done'; },
-      error: (e: HttpErrorResponse) => { this.analysisLoading = false; this.analysisError = this.errs.getKey((e.error as ApiError)?.code); },
+      next: (response) => {
+        this.finishAfterMinimumDelay(startedAt, this.minAnalyzeLoadingMs, () => {
+          this.runs = response.results;
+          this.analysisLoading = false;
+          this.analysisSuccess='simAnalysis.done';
+        });
+      },
+      error: (e: HttpErrorResponse) => {
+        this.finishAfterMinimumDelay(startedAt, this.minAnalyzeLoadingMs, () => {
+          this.analysisLoading = false;
+          this.analysisError = this.errs.getKey((e.error as ApiError)?.code);
+        });
+      },
     });
   }
 
