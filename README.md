@@ -190,6 +190,46 @@ Tests Phase 4:
 - intégration backend: `backend-nest/test/phase4.visibility-scores.integration.spec.ts`, inclus dans `pnpm test:integration` et donc dans `pnpm verify`;
 - Angular: bouton de calcul, loading, scores, pourcentages, concurrents et erreur traduite.
 
+## Phase 5 — Recommandations et action cards déterministes
+
+Flow: `VisibilityScore` + signaux simulés → recommandations déterministes → action cards → statut utilisateur.
+
+Les recommandations Phase 5 sont calculées localement à partir des scores Phase 4. Elles ne font aucun appel IA réel, ne lancent aucune action automatiquement et ne couvrent pas Shopify, billing, scraping ou génération SEO avancée.
+
+Règles principales:
+- score produit faible: action prioritaire pour enrichir la fiche produit;
+- marque peu mentionnée: action `brand`;
+- produit peu mentionné: action `title` ou `description`;
+- concurrents très présents: action comparative;
+- sentiment négatif ou neutre: action sur preuves, bénéfices et différenciants;
+- position moyenne faible: action sur les signaux de pertinence;
+- score projet faible: action globale projet.
+
+Limites de génération:
+- 5 action cards maximum par produit;
+- 30 action cards maximum par projet;
+- déduplication exacte par `projectId`, `productId`, `category`, `reason`;
+- statut initial `open`.
+
+Endpoints:
+- `POST /projects/:projectId/action-cards/generate`
+- `GET /projects/:projectId/action-cards`
+- `GET /projects/:projectId/products/:productId/action-cards`
+- `PATCH /projects/:projectId/action-cards/:actionCardId`
+
+Erreurs structurées:
+- `PROJECT_NOT_FOUND`
+- `ACTION_CARDS_NO_SCORES`
+- `ACTION_CARD_NOT_FOUND`
+- `ACTION_CARD_UPDATE_INVALID`
+- `ACTION_CARDS_GENERATION_FAILED`
+
+Tests Phase 5:
+- unitaires backend: règles de recommandations dans `backend-nest/src/action-cards/__tests__/action-cards.service.spec.ts`;
+- intégration backend: `backend-nest/test/phase5.action-cards.integration.spec.ts`, inclus dans `pnpm test:integration` et donc dans `pnpm verify`;
+- Angular: génération, loading, cards, priorité, impact, effort, catégorie, statut done/dismissed et erreur traduite.
+
 ### Dette technique
 - E2E Phase 2 complet à renforcer plus tard.
 - E2E Phase 3 complet à envisager après stabilisation.
+- E2E Phase 4/5 complet à envisager après stabilisation.

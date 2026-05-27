@@ -252,7 +252,11 @@
     "PROMPT_ANALYSIS_LIMIT_EXCEEDED": "Limite de 25 prompts dépassée",
     "PROMPT_ANALYSIS_FAILED": "Échec de l’analyse simulée",
     "SCORE_NO_PROMPT_RUNS": "Aucun run d’analyse disponible",
-    "SCORE_COMPUTE_FAILED": "Erreur lors du calcul du score"
+    "SCORE_COMPUTE_FAILED": "Erreur lors du calcul du score",
+    "ACTION_CARDS_NO_SCORES": "Aucun score disponible",
+    "ACTION_CARD_NOT_FOUND": "Action card introuvable",
+    "ACTION_CARD_UPDATE_INVALID": "Mise à jour de l’action card invalide",
+    "ACTION_CARDS_GENERATION_FAILED": "Erreur lors de la génération des recommandations"
   },
   "prompts": {
     "title": "Prompts",
@@ -323,5 +327,59 @@
     "loading": "Calcul en cours",
     "success": "Score calculé",
     "scoreOutOf100": "Score sur 100"
+  },
+  "actionCards": {
+    "title": "Recommandations",
+    "subtitle": "Action cards",
+    "help": "Recommandation déterministe issue des scores simulés.",
+    "generate": "Générer les recommandations",
+    "success": "{{count}} recommandations générées",
+    "empty": "Aucune recommandation disponible",
+    "noScores": "Aucun score disponible",
+    "loading": "Génération des recommandations en cours",
+    "projectGroup": "Globales projet",
+    "priority": "Priorité",
+    "impact": "Impact",
+    "effort": "Effort",
+    "statusLabel": "Statut",
+    "status": {
+      "open": "Ouvert",
+      "done": "Fait",
+      "dismissed": "Ignoré"
+    },
+    "category": "Catégorie",
+    "reason": "Raison",
+    "recommendation": "Recommandation",
+    "markDone": "Marquer comme fait",
+    "dismiss": "Ignorer",
+    "updatingDone": "Marquage en cours...",
+    "updatingDismissed": "Ignorance en cours...",
+    "feedback": {
+      "done": "Action marquée comme faite.",
+      "dismissed": "Recommandation ignorée."
+    },
+    "statusMessage": {
+      "open": "Cette recommandation est ouverte.",
+      "done": "Cette recommandation est marquée comme faite.",
+      "dismissed": "Cette recommandation est ignorée."
+    },
+    "level": {
+      "low": "Faible",
+      "medium": "Moyen",
+      "high": "Élevé"
+    },
+    "categoryLabels": {
+      "title": "Titre",
+      "description": "Description",
+      "content": "Contenu",
+      "comparison": "Comparaison",
+      "faq": "FAQ",
+      "pricing": "Prix",
+      "availability": "Disponibilité",
+      "brand": "Marque",
+      "competitors": "Concurrents",
+      "technical": "Technique",
+      "other": "Autre"
+    }
   }
 }

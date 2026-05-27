@@ -12,7 +12,11 @@ export type ApiErrorCode =
   | 'PROMPT_ANALYSIS_FAILED'
   | 'PROMPT_NOT_FOUND'
   | 'SCORE_NO_PROMPT_RUNS'
-  | 'SCORE_COMPUTE_FAILED';
+  | 'SCORE_COMPUTE_FAILED'
+  | 'ACTION_CARDS_NO_SCORES'
+  | 'ACTION_CARD_NOT_FOUND'
+  | 'ACTION_CARD_UPDATE_INVALID'
+  | 'ACTION_CARDS_GENERATION_FAILED';
 
 export type NormalizedProduct = {
   id: string;
@@ -164,4 +168,58 @@ export type ComputeScoresRequest = Record<string, never>;
 export type ComputeScoresResponse = {
   projectScore: ProjectVisibilityScore;
   productScores: ProductVisibilityScore[];
+};
+
+export type ActionCardCategory =
+  | 'title'
+  | 'description'
+  | 'content'
+  | 'comparison'
+  | 'faq'
+  | 'pricing'
+  | 'availability'
+  | 'brand'
+  | 'competitors'
+  | 'technical'
+  | 'other';
+
+export type ActionCardPriority = 'high' | 'medium' | 'low';
+export type ActionCardStatus = 'open' | 'done' | 'dismissed';
+export type ActionCardImpact = 'high' | 'medium' | 'low';
+export type ActionCardEffort = 'high' | 'medium' | 'low';
+export type ActionCardMetadata = Record<string, unknown>;
+
+export type ActionCard = {
+  id: string;
+  projectId: string;
+  productId: string | null;
+  scoreId: string | null;
+  title: string;
+  description: string;
+  category: ActionCardCategory;
+  priority: ActionCardPriority;
+  status: ActionCardStatus;
+  impact: ActionCardImpact;
+  effort: ActionCardEffort;
+  reason: string;
+  recommendation: string;
+  metadata: ActionCardMetadata;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GenerateActionCardsRequest = Record<string, never>;
+
+export type GenerateActionCardsResponse = {
+  cards: ActionCard[];
+  projectCards: ActionCard[];
+  cardsByProduct: Record<string, ActionCard[]>;
+  generatedCount: number;
+};
+
+export type UpdateActionCardRequest = {
+  status?: ActionCardStatus;
+  title?: string;
+  description?: string;
+  recommendation?: string;
 };
