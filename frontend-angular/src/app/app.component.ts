@@ -5,7 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute, Router, pro
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 
-import type { AnalyzePromptsResponse, ComputeScoresResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, ProductVisibilityScore, ProjectVisibilityScore, PromptRun, UpdatePromptRequest, VisibilityScore } from '@promptrank/shared-types';
+import type { ActionCard, ActionCardStatus, AnalyzePromptsResponse, ComputeScoresResponse, GenerateActionCardsResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, ProductVisibilityScore, ProjectVisibilityScore, PromptRun, UpdateActionCardRequest, UpdatePromptRequest, VisibilityScore } from '@promptrank/shared-types';
 type ApiError = { code?: string; message?: string };
 const API_URL = 'http://localhost:3000';
 const CSV_MAX_FILE_SIZE_MB = 5;
@@ -28,6 +28,10 @@ export class ErrorI18nService {
     PROMPT_UPDATE_INVALID: 'errors.PROMPT_UPDATE_INVALID',
     SCORE_NO_PROMPT_RUNS: 'errors.SCORE_NO_PROMPT_RUNS',
     SCORE_COMPUTE_FAILED: 'errors.SCORE_COMPUTE_FAILED',
+    ACTION_CARDS_NO_SCORES: 'errors.ACTION_CARDS_NO_SCORES',
+    ACTION_CARD_NOT_FOUND: 'errors.ACTION_CARD_NOT_FOUND',
+    ACTION_CARD_UPDATE_INVALID: 'errors.ACTION_CARD_UPDATE_INVALID',
+    ACTION_CARDS_GENERATION_FAILED: 'errors.ACTION_CARDS_GENERATION_FAILED',
   };
 
   getKey(code?: string) { return this.map[code || ''] || 'errors.UNKNOWN'; }
@@ -51,6 +55,10 @@ export class ApiService {
   listScores(projectId: string) { return this.http.get<VisibilityScore[]>(`${API_URL}/projects/${projectId}/scores`); }
   getProjectScore(projectId: string) { return this.http.get<ProjectVisibilityScore | null>(`${API_URL}/projects/${projectId}/scores/project`); }
   getProductScore(projectId: string, productId: string) { return this.http.get<ProductVisibilityScore | null>(`${API_URL}/projects/${projectId}/products/${productId}/score`); }
+  generateActionCards(projectId: string) { return this.http.post<GenerateActionCardsResponse>(`${API_URL}/projects/${projectId}/action-cards/generate`, {}); }
+  listActionCards(projectId: string) { return this.http.get<ActionCard[]>(`${API_URL}/projects/${projectId}/action-cards`); }
+  listProductActionCards(projectId: string, productId: string) { return this.http.get<ActionCard[]>(`${API_URL}/projects/${projectId}/products/${productId}/action-cards`); }
+  updateActionCard(projectId: string, actionCardId: string, payload: UpdateActionCardRequest) { return this.http.patch<ActionCard>(`${API_URL}/projects/${projectId}/action-cards/${actionCardId}`, payload); }
 }
 
 @Component({
@@ -854,6 +862,86 @@ export class MappingComponent {
           </div>
         </div>
 
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm" *ngIf="prompts.length">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-slate-950">{{ 'actionCards.title' | translate }}</h3>
+              <p class="mt-1 text-sm text-amber-900">{{ 'actionCards.help' | translate }}</p>
+            </div>
+            <button type="button" *ngIf="projectScore" (click)="generateActionCards()" [disabled]="actionCardsLoading" class="inline-flex items-center justify-center rounded-lg bg-amber-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+              <span class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" *ngIf="actionCardsLoading"></span>
+              {{ (actionCardsLoading ? 'actionCards.loading' : 'actionCards.generate') | translate }}
+            </button>
+          </div>
+
+          <p class="mt-3 text-sm text-blue-700" *ngIf="actionCardsLoading">{{ 'actionCards.loading' | translate }}</p>
+          <p class="mt-3 text-sm text-green-700" *ngIf="actionCardsSuccess">{{ actionCardsSuccess | translate:{ count: generatedActionCardsCount } }}</p>
+          <p class="mt-3 text-sm text-red-700" *ngIf="actionCardsError">{{ actionCardsError | translate }}</p>
+          <p class="mt-3 text-sm text-slate-600" *ngIf="!actionCardsLoading && !actionCardsError && !actionCards.length">{{ (projectScore ? 'actionCards.empty' : 'actionCards.noScores') | translate }}</p>
+
+          <div class="mt-5 space-y-4" *ngIf="actionCards.length">
+            <div class="rounded-xl border border-amber-200 bg-white p-4" *ngIf="projectActionCards.length">
+              <div class="mb-3 flex items-center justify-between gap-2">
+                <h4 class="font-semibold text-slate-950">{{ 'actionCards.projectGroup' | translate }}</h4>
+                <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">{{ projectActionCards.length }}</span>
+              </div>
+              <ng-container *ngFor="let card of projectActionCards">
+                <ng-container *ngTemplateOutlet="actionCardTemplate; context: { $implicit: card }"></ng-container>
+              </ng-container>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-white p-4" *ngFor="let group of actionCardGroups">
+              <div class="mb-3 flex items-center justify-between gap-2">
+                <h4 class="font-semibold text-slate-950">{{ group.productTitle }}</h4>
+                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ group.items.length }}</span>
+              </div>
+              <ng-container *ngFor="let card of group.items">
+                <ng-container *ngTemplateOutlet="actionCardTemplate; context: { $implicit: card }"></ng-container>
+              </ng-container>
+            </div>
+          </div>
+
+          <ng-template #actionCardTemplate let-card>
+            <article class="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-4 last:mb-0">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h5 class="font-semibold text-slate-950">{{ card.title }}</h5>
+                  <p class="mt-1 text-sm text-slate-600">{{ card.description }}</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span class="w-fit rounded-full px-3 py-1 text-xs font-semibold" [ngClass]="actionPriorityClass(card.priority)">{{ 'actionCards.priority' | translate }}: {{ actionLevelKey(card.priority) | translate }}</span>
+                  <span class="w-fit rounded-full px-3 py-1 text-xs font-semibold" [ngClass]="actionStatusClass(card.status)">{{ actionStatusKey(card.status) | translate }}</span>
+                </div>
+              </div>
+              <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <p><b>{{ 'actionCards.category' | translate }}:</b> {{ actionCategoryKey(card.category) | translate }}</p>
+                <p><b>{{ 'actionCards.priority' | translate }}:</b> {{ actionLevelKey(card.priority) | translate }}</p>
+                <p><b>{{ 'actionCards.impact' | translate }}:</b> {{ actionLevelKey(card.impact) | translate }}</p>
+                <p><b>{{ 'actionCards.effort' | translate }}:</b> {{ actionLevelKey(card.effort) | translate }}</p>
+                <p *ngIf="card.productId"><b>{{ 'products.columns.title' | translate }}:</b> {{ productTitle(card.productId) }}</p>
+              </div>
+              <p class="mt-3 text-sm text-slate-700"><b>{{ 'actionCards.reason' | translate }}:</b> {{ card.reason }}</p>
+              <p class="mt-2 text-sm text-slate-700"><b>{{ 'actionCards.recommendation' | translate }}:</b> {{ card.recommendation }}</p>
+              <div class="mt-3 rounded-lg border px-3 py-2 text-sm font-medium" *ngIf="card.status !== 'open'" [ngClass]="actionStatusPanelClass(card.status)">
+                {{ actionStatusMessageKey(card.status) | translate }}
+              </div>
+              <p class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800" *ngIf="actionCardFeedback[card.id]">
+                {{ actionCardFeedback[card.id] | translate }}
+              </p>
+              <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+                <button type="button" (click)="updateActionCardStatus(card, 'done')" [disabled]="!!actionCardUpdating[card.id] || card.status === 'done'" class="inline-flex items-center justify-center rounded bg-green-100 px-3 py-1.5 text-sm font-semibold text-green-900 hover:bg-green-200 disabled:cursor-not-allowed disabled:text-slate-500">
+                  <span class="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-green-300 border-t-green-800" *ngIf="actionCardUpdating[card.id] === 'done'"></span>
+                  {{ (actionCardUpdating[card.id] === 'done' ? 'actionCards.updatingDone' : 'actionCards.markDone') | translate }}
+                </button>
+                <button type="button" (click)="updateActionCardStatus(card, 'dismissed')" [disabled]="!!actionCardUpdating[card.id] || card.status === 'dismissed'" class="inline-flex items-center justify-center rounded bg-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-900 hover:bg-slate-300 disabled:cursor-not-allowed disabled:text-slate-500">
+                  <span class="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-400 border-t-slate-800" *ngIf="actionCardUpdating[card.id] === 'dismissed'"></span>
+                  {{ (actionCardUpdating[card.id] === 'dismissed' ? 'actionCards.updatingDismissed' : 'actionCards.dismiss') | translate }}
+                </button>
+              </div>
+            </article>
+          </ng-template>
+        </div>
+
       </ng-container>
     </section>
   `,
@@ -894,10 +982,20 @@ export class ProductsComponent {
   scoreSuccess = '';
   projectScore: ProjectVisibilityScore | null = null;
   productScores: ProductVisibilityScore[] = [];
+  actionCards: ActionCard[] = [];
+  projectActionCards: ActionCard[] = [];
+  actionCardGroups: { productId: string; productTitle: string; items: ActionCard[] }[] = [];
+  actionCardsLoading = false;
+  actionCardsError = '';
+  actionCardsSuccess = '';
+  generatedActionCardsCount = 0;
+  actionCardUpdating: Record<string, ActionCardStatus | ''> = {};
+  actionCardFeedback: Record<string, string> = {};
 
   private readonly minGenerateLoadingMs = 900;
   private readonly minAnalyzeLoadingMs = 1000;
   private readonly minScoreLoadingMs = 1000;
+  private readonly minActionCardsLoadingMs = 1000;
 
   ngOnInit() {
     this.api.listProducts(this.projectId).subscribe({
@@ -1106,6 +1204,88 @@ export class ProductsComponent {
         });
       },
     });
+  }
+
+  generateActionCards() {
+    if (this.actionCardsLoading) return;
+    if (!this.projectScore) {
+      this.actionCardsError = 'errors.ACTION_CARDS_NO_SCORES';
+      return;
+    }
+    const startedAt = Date.now();
+    this.actionCardsLoading = true;
+    this.actionCardsError = '';
+    this.actionCardsSuccess = '';
+    this.api.generateActionCards(this.projectId).subscribe({
+      next: response => {
+        this.finishAfterMinimumDelay(startedAt, this.minActionCardsLoadingMs, () => {
+          this.actionCards = response.cards;
+          this.generatedActionCardsCount = response.generatedCount ?? response.cards.length;
+          this.updateGroupedActionCards();
+          this.actionCardsSuccess = 'actionCards.success';
+          this.actionCardsLoading = false;
+        });
+      },
+      error: (e: HttpErrorResponse) => {
+        this.finishAfterMinimumDelay(startedAt, this.minActionCardsLoadingMs, () => {
+          this.actionCardsError = this.errs.getKey((e.error as ApiError)?.code);
+          this.actionCardsLoading = false;
+        });
+      },
+    });
+  }
+
+  updateActionCardStatus(card: ActionCard, status: ActionCardStatus) {
+    this.actionCardsError = '';
+    this.actionCardFeedback[card.id] = '';
+    this.actionCardUpdating[card.id] = status;
+    this.api.updateActionCard(this.projectId, card.id, { status }).subscribe({
+      next: updated => {
+        this.actionCards = this.actionCards.map(item => item.id === updated.id ? updated : item);
+        this.updateGroupedActionCards();
+        this.actionCardFeedback[card.id] = status === 'done' ? 'actionCards.feedback.done' : 'actionCards.feedback.dismissed';
+        this.actionCardUpdating[card.id] = '';
+      },
+      error: (e: HttpErrorResponse) => {
+        this.actionCardsError = this.errs.getKey((e.error as ApiError)?.code);
+        this.actionCardUpdating[card.id] = '';
+      },
+    });
+  }
+
+  private updateGroupedActionCards() {
+    this.projectActionCards = this.actionCards.filter(card => !card.productId);
+    const map: Record<string, ActionCard[]> = {};
+    for (const card of this.actionCards.filter(item => item.productId)) {
+      const productId = card.productId!;
+      map[productId] = map[productId] || [];
+      map[productId].push(card);
+    }
+    this.actionCardGroups = Object.entries(map).map(([productId, items]) => ({
+      productId,
+      productTitle: this.productTitle(productId),
+      items,
+    }));
+  }
+
+  actionStatusKey(status: string) { return `actionCards.status.${status}`; }
+  actionStatusMessageKey(status: string) { return `actionCards.statusMessage.${status}`; }
+  actionLevelKey(level: string) { return `actionCards.level.${level}`; }
+  actionCategoryKey(category: string) { return `actionCards.categoryLabels.${category}`; }
+  actionPriorityClass(priority: string) {
+    if (priority === 'high') return 'bg-red-100 text-red-800';
+    if (priority === 'medium') return 'bg-amber-100 text-amber-800';
+    return 'bg-green-100 text-green-800';
+  }
+  actionStatusClass(status: string) {
+    if (status === 'done') return 'bg-green-100 text-green-800';
+    if (status === 'dismissed') return 'bg-slate-200 text-slate-700';
+    return 'bg-blue-100 text-blue-800';
+  }
+  actionStatusPanelClass(status: string) {
+    if (status === 'done') return 'border-green-200 bg-green-50 text-green-800';
+    if (status === 'dismissed') return 'border-slate-200 bg-slate-100 text-slate-700';
+    return 'border-blue-200 bg-blue-50 text-blue-800';
   }
 
   formatRate(value: number) {

@@ -252,7 +252,11 @@
     "PROMPT_ANALYSIS_LIMIT_EXCEEDED": "25 prompts limit exceeded",
     "PROMPT_ANALYSIS_FAILED": "Simulated analysis failed",
     "SCORE_NO_PROMPT_RUNS": "No analysis run available",
-    "SCORE_COMPUTE_FAILED": "Score calculation failed"
+    "SCORE_COMPUTE_FAILED": "Score calculation failed",
+    "ACTION_CARDS_NO_SCORES": "No score available",
+    "ACTION_CARD_NOT_FOUND": "Action card not found",
+    "ACTION_CARD_UPDATE_INVALID": "Invalid action card update",
+    "ACTION_CARDS_GENERATION_FAILED": "Recommendation generation failed"
   },
   "prompts": {
     "title": "Prompts",
@@ -323,5 +327,59 @@
     "loading": "Calculating",
     "success": "Score calculated",
     "scoreOutOf100": "Score out of 100"
+  },
+  "actionCards": {
+    "title": "Recommendations",
+    "subtitle": "Action cards",
+    "help": "Deterministic recommendation based on simulated scores.",
+    "generate": "Generate recommendations",
+    "success": "{{count}} recommendations generated",
+    "empty": "No recommendation available",
+    "noScores": "No score available",
+    "loading": "Generating recommendations",
+    "projectGroup": "Project-wide",
+    "priority": "Priority",
+    "impact": "Impact",
+    "effort": "Effort",
+    "statusLabel": "Status",
+    "status": {
+      "open": "Open",
+      "done": "Done",
+      "dismissed": "Dismissed"
+    },
+    "category": "Category",
+    "reason": "Reason",
+    "recommendation": "Recommendation",
+    "markDone": "Mark as done",
+    "dismiss": "Dismiss",
+    "updatingDone": "Marking as done...",
+    "updatingDismissed": "Dismissing...",
+    "feedback": {
+      "done": "Action marked as done.",
+      "dismissed": "Recommendation dismissed."
+    },
+    "statusMessage": {
+      "open": "This recommendation is open.",
+      "done": "This recommendation is marked as done.",
+      "dismissed": "This recommendation is dismissed."
+    },
+    "level": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "categoryLabels": {
+      "title": "Title",
+      "description": "Description",
+      "content": "Content",
+      "comparison": "Comparison",
+      "faq": "FAQ",
+      "pricing": "Pricing",
+      "availability": "Availability",
+      "brand": "Brand",
+      "competitors": "Competitors",
+      "technical": "Technical",
+      "other": "Other"
+    }
   }
 }

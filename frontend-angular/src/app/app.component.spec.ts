@@ -208,10 +208,42 @@ const translations = {
     success: 'Score calculé',
     scoreOutOf100: 'Score sur 100',
   },
+  actionCards: {
+    title: 'Recommandations',
+    subtitle: 'Action cards',
+    help: 'Recommandation déterministe issue des scores simulés.',
+    generate: 'Générer les recommandations',
+    success: '{{count}} recommandations générées',
+    empty: 'Aucune recommandation disponible',
+    noScores: 'Aucun score disponible',
+    loading: 'Génération des recommandations en cours',
+    projectGroup: 'Globales projet',
+    priority: 'Priorité',
+    impact: 'Impact',
+    effort: 'Effort',
+    statusLabel: 'Statut',
+    status: { open: 'Ouvert', done: 'Fait', dismissed: 'Ignoré' },
+    category: 'Catégorie',
+    reason: 'Raison',
+    recommendation: 'Recommandation',
+    markDone: 'Marquer comme fait',
+    dismiss: 'Ignorer',
+    updatingDone: 'Marquage en cours...',
+    updatingDismissed: 'Ignorance en cours...',
+    feedback: { done: 'Action marquée comme faite.', dismissed: 'Recommandation ignorée.' },
+    statusMessage: {
+      open: 'Cette recommandation est ouverte.',
+      done: 'Cette recommandation est marquée comme faite.',
+      dismissed: 'Cette recommandation est ignorée.',
+    },
+    level: { low: 'Faible', medium: 'Moyen', high: 'Élevé' },
+    categoryLabels: { comparison: 'Comparaison', brand: 'Marque', content: 'Contenu', description: 'Description', title: 'Titre' },
+  },
   errors: {
     CSV_MAPPING_MISSING_TITLE: 'Le champ title est obligatoire.',
     PROMPT_ANALYSIS_NO_PROMPTS: 'Aucun prompt sélectionné',
     SCORE_NO_PROMPT_RUNS: "Aucun run d'analyse disponible",
+    ACTION_CARDS_NO_SCORES: 'Aucun score disponible',
   },
 };
 
@@ -447,6 +479,30 @@ describe('ProductsComponent Phase 2 prompts', () => {
       updatedAt: '2026-05-27T10:00:00.000Z',
     }],
   };
+  const actionCard = {
+    id: 'action-1',
+    projectId: 'project-1',
+    productId: 'p1',
+    scoreId: 'score-product',
+    title: 'Créer un contenu comparatif',
+    description: 'Des concurrents apparaissent fortement.',
+    category: 'comparison',
+    priority: 'high',
+    status: 'open',
+    impact: 'medium',
+    effort: 'medium',
+    reason: 'Les concurrents détectés sont présents: Stanley.',
+    recommendation: 'Créer du contenu comparatif avec les concurrents détectés.',
+    metadata: {},
+    createdAt: '2026-05-27T10:00:00.000Z',
+    updatedAt: '2026-05-27T10:00:00.000Z',
+  };
+  const actionCardsResponse = {
+    cards: [actionCard],
+    projectCards: [],
+    cardsByProduct: { p1: [actionCard] },
+    generatedCount: 1,
+  };
   let apiMock: any;
 
   beforeEach(async () => {
@@ -460,6 +516,8 @@ describe('ProductsComponent Phase 2 prompts', () => {
         results: [analysisResult],
       }),
       computeScores: () => of(scoreResponse),
+      generateActionCards: () => of(actionCardsResponse),
+      updateActionCard: (_projectId: string, _id: string, payload: any) => of({ ...actionCard, status: payload.status }),
     };
 
     await TestBed.configureTestingModule({
@@ -642,5 +700,100 @@ describe('ProductsComponent Phase 2 prompts', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain("Aucun run d'analyse disponible");
+  }));
+
+  it('shows action card generate action and loading state', fakeAsync(() => {
+    const cards$ = new Subject<any>();
+    apiMock.generateActionCards = () => cards$;
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Recommandations');
+    expect(fixture.nativeElement.textContent).not.toContain('Générer les recommandations');
+
+    fixture.componentInstance.projectScore = scoreResponse.projectScore as any;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Générer les recommandations');
+
+    fixture.componentInstance.generateActionCards();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Génération des recommandations en cours');
+
+    cards$.next(actionCardsResponse);
+    cards$.complete();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Génération des recommandations en cours');
+
+    tick(999);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Génération des recommandations en cours');
+
+    tick(1);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('1 recommandations générées');
+  }));
+
+  it('displays action card details, priority, impact, effort and category', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.componentInstance.projectScore = scoreResponse.projectScore as any;
+    fixture.componentInstance.generateActionCards();
+    tick(1000);
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Créer un contenu comparatif');
+    expect(text).toContain('Priorité');
+    expect(text).toContain('Élevé');
+    expect(text).toContain('Impact');
+    expect(text).toContain('Moyen');
+    expect(text).toContain('Effort');
+    expect(text).toContain('Catégorie');
+    expect(text).toContain('Comparaison');
+    expect(text).toContain('Raison');
+    expect(text).toContain('Recommandation');
+    expect(text).toContain('Produit 1');
+  }));
+
+  it('marks an action card as done and dismissed', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.componentInstance.projectScore = scoreResponse.projectScore as any;
+    fixture.componentInstance.generateActionCards();
+    tick(1000);
+    fixture.detectChanges();
+
+    fixture.componentInstance.updateActionCardStatus(actionCard as any, 'done');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Fait');
+    expect(fixture.nativeElement.textContent).toContain('Action marquée comme faite.');
+    expect(fixture.nativeElement.textContent).toContain('Cette recommandation est marquée comme faite.');
+
+    fixture.componentInstance.updateActionCardStatus(actionCard as any, 'dismissed');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Ignoré');
+    expect(fixture.nativeElement.textContent).toContain('Recommandation ignorée.');
+    expect(fixture.nativeElement.textContent).toContain('Cette recommandation est ignorée.');
+  }));
+
+  it('translates ACTION_CARDS_NO_SCORES when recommendations generation fails', fakeAsync(() => {
+    apiMock.generateActionCards = () => throwError(() => ({ error: { code: 'ACTION_CARDS_NO_SCORES' } }));
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.componentInstance.projectScore = scoreResponse.projectScore as any;
+    fixture.componentInstance.generateActionCards();
+    tick(1000);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Aucun score disponible');
   }));
 });
