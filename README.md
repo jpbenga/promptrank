@@ -39,7 +39,7 @@ Commandes utiles :
 pnpm test              # tests API unitaires + intégration DB, puis tests Angular
 pnpm test:api          # prépare la DB de test, puis lance unitaires + intégration backend
 pnpm test:web          # tests Angular/Karma
-pnpm test:integration  # prépare la DB de test, puis lance l'intégration API Phase 1
+pnpm test:integration  # prépare la DB de test, puis lance l'intégration API Phases 1 à 4
 pnpm test:e2e          # Playwright, nécessite pnpm dev déjà lancé
 pnpm lint
 pnpm build
@@ -143,6 +143,52 @@ Redis est volontairement hors périmètre Phase 1. Il sera introduit plus tard s
 Flow: prompts → réponses simulées → analyse déterministe. Cette phase n'appelle aucune API IA réelle (OpenAI/Gemini/Perplexity).
 
 Limites local/demo: 25 prompts max par analyse.
+
+Endpoints:
+- `POST /projects/:projectId/prompts/analyze`
+- `GET /projects/:projectId/prompt-runs`
+- `GET /projects/:projectId/prompts/:promptId/runs`
+- `GET /projects/:projectId/products/:productId/prompt-runs`
+
+## Phase 4 — Scores de visibilité déterministes
+
+Flow: `PromptRun` simulés → agrégation → score produit → score projet → affichage UI.
+
+Le score Phase 4 est calculé uniquement à partir des analyses simulées persistées en Phase 3. Il ne fait aucun appel IA réel et ne constitue pas encore un scoring IA avancé.
+
+### Formule simple
+Chaque run complété reçoit un score borné entre 0 et 100:
+- base run complété: `+5`
+- marque mentionnée: `+35`
+- produit mentionné: `+35`
+- position `1`: `+15`, position `2`: `+10`, position `3`: `+5`
+- sentiment `positive`: `+10`, `neutral`: `+5`, `negative`: `-10`, `unknown`: `+0`
+- concurrents mentionnés: `-2` par concurrent, pénalité maximale `-10`
+
+Le score produit est la moyenne arrondie des runs du produit. Le score projet est la moyenne arrondie des scores produits.
+
+Métriques calculées:
+- prompts analysés;
+- taux de mention marque, produit et concurrents, retournés entre `0` et `1`;
+- position moyenne;
+- sentiment dominant;
+- top concurrents triés par fréquence.
+
+Endpoints:
+- `POST /projects/:projectId/scores/compute`
+- `GET /projects/:projectId/scores`
+- `GET /projects/:projectId/scores/project`
+- `GET /projects/:projectId/products/:productId/score`
+
+Erreurs structurées:
+- `PROJECT_NOT_FOUND`
+- `SCORE_NO_PROMPT_RUNS`
+- `SCORE_COMPUTE_FAILED`
+
+Tests Phase 4:
+- unitaires backend: formule et agrégations dans `backend-nest/src/scores/__tests__/scores.service.spec.ts`;
+- intégration backend: `backend-nest/test/phase4.visibility-scores.integration.spec.ts`, inclus dans `pnpm test:integration` et donc dans `pnpm verify`;
+- Angular: bouton de calcul, loading, scores, pourcentages, concurrents et erreur traduite.
 
 ### Dette technique
 - E2E Phase 2 complet à renforcer plus tard.

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { fakeAsync, tick } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { ApiService, AppComponent, MappingComponent, NewProjectComponent, PreviewComponent, ProductsComponent } from './app.component';
 
@@ -189,9 +189,29 @@ const translations = {
     done: 'Analyse terminée',
     empty: "Aucun résultat d'analyse",
   },
+  visibilityScores: {
+    title: 'Scores de visibilité',
+    help: 'Le score est calculé depuis les analyses simulées existantes, sans appel IA réel.',
+    compute: 'Calculer les scores',
+    projectScore: 'Score projet',
+    productScore: 'Score produit',
+    analyzedPrompts: 'Prompts analysés',
+    brandMentionRate: 'Taux mention marque',
+    productMentionRate: 'Taux mention produit',
+    competitorMentionRate: 'Taux concurrents',
+    averagePosition: 'Position moyenne',
+    dominantSentiment: 'Sentiment dominant',
+    topCompetitors: 'Top concurrents',
+    empty: 'Aucun score disponible',
+    noRuns: "Aucun run d'analyse disponible",
+    loading: 'Calcul en cours',
+    success: 'Score calculé',
+    scoreOutOf100: 'Score sur 100',
+  },
   errors: {
     CSV_MAPPING_MISSING_TITLE: 'Le champ title est obligatoire.',
     PROMPT_ANALYSIS_NO_PROMPTS: 'Aucun prompt sélectionné',
+    SCORE_NO_PROMPT_RUNS: "Aucun run d'analyse disponible",
   },
 };
 
@@ -371,6 +391,62 @@ describe('ProductsComponent Phase 2 prompts', () => {
     availability: 'in_stock',
   }));
   const prompt = { id: 'pr1', projectId: 'x', productId: 'p1', text: 'meilleur produit', status: 'proposed', intent: 'best', source: 'template', language: 'fr', country: 'FR', position: 0, createdAt: '', updatedAt: '' };
+  const analysisResult = {
+    prompt,
+    run: {
+      id: 'run-1',
+      projectId: 'project-1',
+      productId: 'p1',
+      promptId: 'pr1',
+      provider: 'mock',
+      model: 'mock-v1',
+      responseText: 'Réponse simulée test',
+      brandMentioned: true,
+      productMentioned: false,
+      competitorsMentioned: ['Stanley'],
+      position: 1,
+      sentiment: 'positive',
+      status: 'completed',
+      createdAt: '2026-05-27T10:00:00.000Z',
+      updatedAt: '2026-05-27T10:00:00.000Z',
+    },
+  };
+  const scoreResponse = {
+    projectScore: {
+      id: 'score-project',
+      projectId: 'project-1',
+      productId: null,
+      scope: 'project',
+      score: 84,
+      analyzedPromptsCount: 2,
+      brandMentionRate: 0.5,
+      productMentionRate: 1,
+      competitorMentionRate: 1,
+      averagePosition: 1.5,
+      dominantSentiment: 'positive',
+      topCompetitors: ['Stanley'],
+      details: {},
+      createdAt: '2026-05-27T10:00:00.000Z',
+      updatedAt: '2026-05-27T10:00:00.000Z',
+    },
+    productScores: [{
+      id: 'score-product',
+      projectId: 'project-1',
+      productId: 'p1',
+      scope: 'product',
+      score: 84,
+      analyzedPromptsCount: 2,
+      brandMentionRate: 0.5,
+      productMentionRate: 1,
+      competitorMentionRate: 1,
+      averagePosition: 1.5,
+      dominantSentiment: 'positive',
+      topCompetitors: ['Stanley'],
+      details: {},
+      createdAt: '2026-05-27T10:00:00.000Z',
+      updatedAt: '2026-05-27T10:00:00.000Z',
+    }],
+  };
   let apiMock: any;
 
   beforeEach(async () => {
@@ -381,17 +457,9 @@ describe('ProductsComponent Phase 2 prompts', () => {
       updatePrompt: () => of({ ...prompt, text: 'modifié', status: 'edited', source: 'manual' }),
       deletePrompt: () => of({}),
       analyzePrompts: () => of({
-        results: [{
-          prompt,
-          run: {
-            responseText: 'Réponse simulée test',
-            brandMentioned: true,
-            productMentioned: false,
-            competitorsMentioned: ['Stanley'],
-            sentiment: 'positive',
-          },
-        }],
+        results: [analysisResult],
       }),
+      computeScores: () => of(scoreResponse),
     };
 
     await TestBed.configureTestingModule({
@@ -488,5 +556,91 @@ describe('ProductsComponent Phase 2 prompts', () => {
     expect(fixture.nativeElement.textContent).toContain('Stanley');
     expect(fixture.nativeElement.textContent).toContain('Sentiment');
     expect(fixture.nativeElement.textContent).toContain('positive');
+  }));
+
+  it('keeps visibility score button disabled until simulated analysis has run', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.detectChanges();
+
+    const scoreButton = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'))
+      .find(button => button.textContent?.includes('Calculer les scores')) as HTMLButtonElement;
+    expect(scoreButton.disabled).toBeTrue();
+
+    fixture.componentInstance.runs = [analysisResult as any];
+    fixture.detectChanges();
+    expect(scoreButton.disabled).toBeFalse();
+  }));
+
+  it('shows score compute action and loading state', fakeAsync(() => {
+    const scores$ = new Subject<any>();
+    apiMock.computeScores = () => scores$;
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.componentInstance.runs = [analysisResult as any];
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Scores de visibilité');
+    expect(fixture.nativeElement.textContent).toContain('Calculer les scores');
+
+    fixture.componentInstance.computeVisibilityScores();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Calcul en cours');
+
+    scores$.next(scoreResponse);
+    scores$.complete();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Calcul en cours');
+
+    tick(999);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Calcul en cours');
+
+    tick(1);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Score calculé');
+  }));
+
+  it('displays project score, product score, rates and competitors', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.componentInstance.runs = [analysisResult as any];
+    fixture.componentInstance.computeVisibilityScores();
+    tick(1000);
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Score projet');
+    expect(text).toContain('84');
+    expect(text).toContain('Produit 1');
+    expect(text).toContain('Taux mention marque');
+    expect(text).toContain('50%');
+    expect(text).toContain('Taux mention produit');
+    expect(text).toContain('100%');
+    expect(text).toContain('Taux concurrents');
+    expect(text).toContain('Top concurrents');
+    expect(text).toContain('Stanley');
+    expect(text).toContain('Sentiment dominant');
+    expect(text).toContain('positive');
+  }));
+
+  it('translates SCORE_NO_PROMPT_RUNS when score compute fails', fakeAsync(() => {
+    apiMock.computeScores = () => throwError(() => ({ error: { code: 'SCORE_NO_PROMPT_RUNS' } }));
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.componentInstance.runs = [analysisResult as any];
+    fixture.componentInstance.computeVisibilityScores();
+    tick(1000);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain("Aucun run d'analyse disponible");
   }));
 });

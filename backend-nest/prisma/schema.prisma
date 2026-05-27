@@ -21,6 +21,7 @@ model Project {
   products        Product[]
   prompts         ProductPrompt[]
   promptRuns      PromptRun[]
+  visibilityScores VisibilityScore[]
 }
 
 
@@ -82,6 +83,7 @@ model Product {
   project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   prompts         ProductPrompt[]
   promptRuns      PromptRun[]
+  visibilityScores VisibilityScore[]
 }
 
 
@@ -129,3 +131,25 @@ model PromptRun {
   @@index([projectId, productId])
 }
 
+model VisibilityScore {
+  id                   String   @id @default(cuid())
+  projectId            String
+  productId            String?
+  scope                String
+  score                Int
+  analyzedPromptsCount Int
+  brandMentionRate     Float
+  productMentionRate   Float
+  competitorMentionRate Float
+  averagePosition      Float?
+  dominantSentiment    String
+  topCompetitors       Json
+  details              Json
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  product              Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, scope])
+  @@index([projectId, productId])
+}

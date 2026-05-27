@@ -250,7 +250,9 @@
     "PROMPT_UPDATE_INVALID": "Mise à jour de prompt invalide.",
     "PROMPT_ANALYSIS_NO_PROMPTS": "Aucun prompt sélectionné",
     "PROMPT_ANALYSIS_LIMIT_EXCEEDED": "Limite de 25 prompts dépassée",
-    "PROMPT_ANALYSIS_FAILED": "Échec de l’analyse simulée"
+    "PROMPT_ANALYSIS_FAILED": "Échec de l’analyse simulée",
+    "SCORE_NO_PROMPT_RUNS": "Aucun run d’analyse disponible",
+    "SCORE_COMPUTE_FAILED": "Erreur lors du calcul du score"
   },
   "prompts": {
     "title": "Prompts",
@@ -302,5 +304,24 @@
     "done": "Analyse terminée",
     "noPrompt": "Aucun prompt sélectionné",
     "empty": "Aucun résultat d’analyse"
+  },
+  "visibilityScores": {
+    "title": "Scores de visibilité",
+    "help": "Le score est calculé depuis les analyses simulées existantes, sans appel IA réel.",
+    "compute": "Calculer les scores",
+    "projectScore": "Score projet",
+    "productScore": "Score produit",
+    "analyzedPrompts": "Prompts analysés",
+    "brandMentionRate": "Taux mention marque",
+    "productMentionRate": "Taux mention produit",
+    "competitorMentionRate": "Taux concurrents",
+    "averagePosition": "Position moyenne",
+    "dominantSentiment": "Sentiment dominant",
+    "topCompetitors": "Top concurrents",
+    "empty": "Aucun score disponible",
+    "noRuns": "Aucun run d’analyse disponible",
+    "loading": "Calcul en cours",
+    "success": "Score calculé",
+    "scoreOutOf100": "Score sur 100"
   }
 }

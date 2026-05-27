@@ -250,7 +250,9 @@
     "PROMPT_UPDATE_INVALID": "Invalid prompt update.",
     "PROMPT_ANALYSIS_NO_PROMPTS": "No prompt selected",
     "PROMPT_ANALYSIS_LIMIT_EXCEEDED": "25 prompts limit exceeded",
-    "PROMPT_ANALYSIS_FAILED": "Simulated analysis failed"
+    "PROMPT_ANALYSIS_FAILED": "Simulated analysis failed",
+    "SCORE_NO_PROMPT_RUNS": "No analysis run available",
+    "SCORE_COMPUTE_FAILED": "Score calculation failed"
   },
   "prompts": {
     "title": "Prompts",
@@ -302,5 +304,24 @@
     "done": "Analysis completed",
     "noPrompt": "No prompt selected",
     "empty": "No analysis result"
+  },
+  "visibilityScores": {
+    "title": "Visibility scores",
+    "help": "The score is calculated from existing simulated analyses, without any real AI call.",
+    "compute": "Calculate scores",
+    "projectScore": "Project score",
+    "productScore": "Product score",
+    "analyzedPrompts": "Analyzed prompts",
+    "brandMentionRate": "Brand mention rate",
+    "productMentionRate": "Product mention rate",
+    "competitorMentionRate": "Competitor rate",
+    "averagePosition": "Average position",
+    "dominantSentiment": "Dominant sentiment",
+    "topCompetitors": "Top competitors",
+    "empty": "No score available",
+    "noRuns": "No analysis run available",
+    "loading": "Calculating",
+    "success": "Score calculated",
+    "scoreOutOf100": "Score out of 100"
   }
 }

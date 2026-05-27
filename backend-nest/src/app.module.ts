@@ -10,6 +10,8 @@ import { ProductsController } from './products/products.controller';
 import { ProductsService } from './products/products.service';
 import { PromptsController } from './prompts/prompts.controller';
 import { PromptsService } from './prompts/prompts.service';
+import { ScoresController } from './scores/scores.controller';
+import { ScoresService } from './scores/scores.service';
 
-@Module({controllers:[HealthController,ProjectsController,CsvController,ProductsController,PromptsController],providers:[PrismaService,ProjectsService,CsvService,ProductsService,PromptsService],imports:[ConfigModule.forRoot({isGlobal:true,envFilePath:['../.env','.env']})]})
+@Module({controllers:[HealthController,ProjectsController,CsvController,ProductsController,PromptsController,ScoresController],providers:[PrismaService,ProjectsService,CsvService,ProductsService,PromptsService,ScoresService],imports:[ConfigModule.forRoot({isGlobal:true,envFilePath:['../.env','.env']})]})
 export class AppModule {}

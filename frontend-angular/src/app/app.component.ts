@@ -5,7 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute, Router, pro
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 
-import type { AnalyzePromptsResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, PromptRun, UpdatePromptRequest } from '@promptrank/shared-types';
+import type { AnalyzePromptsResponse, ComputeScoresResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, ProductVisibilityScore, ProjectVisibilityScore, PromptRun, UpdatePromptRequest, VisibilityScore } from '@promptrank/shared-types';
 type ApiError = { code?: string; message?: string };
 const API_URL = 'http://localhost:3000';
 const CSV_MAX_FILE_SIZE_MB = 5;
@@ -26,6 +26,8 @@ export class ErrorI18nService {
     PROMPT_GENERATION_NO_PRODUCTS: 'errors.PROMPT_GENERATION_NO_PRODUCTS',
     PROMPT_NOT_FOUND: 'errors.PROMPT_NOT_FOUND',
     PROMPT_UPDATE_INVALID: 'errors.PROMPT_UPDATE_INVALID',
+    SCORE_NO_PROMPT_RUNS: 'errors.SCORE_NO_PROMPT_RUNS',
+    SCORE_COMPUTE_FAILED: 'errors.SCORE_COMPUTE_FAILED',
   };
 
   getKey(code?: string) { return this.map[code || ''] || 'errors.UNKNOWN'; }
@@ -45,6 +47,10 @@ export class ApiService {
   updatePrompt(projectId: string, promptId: string, payload: UpdatePromptRequest) { return this.http.patch<ProductPrompt>(`${API_URL}/projects/${projectId}/prompts/${promptId}`, payload); }
   deletePrompt(projectId: string, promptId: string) { return this.http.delete<any>(`${API_URL}/projects/${projectId}/prompts/${promptId}`); }
   analyzePrompts(projectId: string, promptIds: string[]) { return this.http.post<AnalyzePromptsResponse>(`${API_URL}/projects/${projectId}/prompts/analyze`, { promptIds }); }
+  computeScores(projectId: string) { return this.http.post<ComputeScoresResponse>(`${API_URL}/projects/${projectId}/scores/compute`, {}); }
+  listScores(projectId: string) { return this.http.get<VisibilityScore[]>(`${API_URL}/projects/${projectId}/scores`); }
+  getProjectScore(projectId: string) { return this.http.get<ProjectVisibilityScore | null>(`${API_URL}/projects/${projectId}/scores/project`); }
+  getProductScore(projectId: string, productId: string) { return this.http.get<ProductVisibilityScore | null>(`${API_URL}/projects/${projectId}/products/${productId}/score`); }
 }
 
 @Component({
@@ -801,6 +807,53 @@ export class MappingComponent {
           </div>
         </div>
 
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm" *ngIf="prompts.length">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-slate-950">{{ 'visibilityScores.title' | translate }}</h3>
+              <p class="mt-1 text-sm text-emerald-900">{{ 'visibilityScores.help' | translate }}</p>
+            </div>
+            <button type="button" (click)="computeVisibilityScores()" [disabled]="scoreLoading || !runs.length" class="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+              <span class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" *ngIf="scoreLoading"></span>
+              {{ (scoreLoading ? 'visibilityScores.loading' : 'visibilityScores.compute') | translate }}
+            </button>
+          </div>
+
+          <p class="mt-3 text-sm text-blue-700" *ngIf="scoreLoading">{{ 'visibilityScores.loading' | translate }}</p>
+          <p class="mt-3 text-sm text-green-700" *ngIf="scoreSuccess">{{ scoreSuccess | translate }}</p>
+          <p class="mt-3 text-sm text-red-700" *ngIf="scoreError">{{ scoreError | translate }}</p>
+          <p class="mt-3 text-sm text-slate-600" *ngIf="!scoreLoading && !scoreError && !projectScore">{{ 'visibilityScores.empty' | translate }}</p>
+
+          <div class="mt-5 grid gap-4 lg:grid-cols-[18rem_1fr]" *ngIf="projectScore">
+            <div class="rounded-xl border border-emerald-200 bg-white p-4">
+              <p class="text-sm font-semibold text-emerald-900">{{ 'visibilityScores.projectScore' | translate }}</p>
+              <p class="mt-3 text-4xl font-bold text-slate-950">{{ projectScore.score }}<span class="text-lg text-slate-500">/100</span></p>
+              <p class="mt-2 text-sm text-slate-600">{{ 'visibilityScores.analyzedPrompts' | translate }}: {{ projectScore.analyzedPromptsCount }}</p>
+              <p class="mt-1 text-sm text-slate-600">{{ 'visibilityScores.dominantSentiment' | translate }}: {{ projectScore.dominantSentiment }}</p>
+            </div>
+
+            <div class="space-y-3">
+              <div class="rounded-xl border border-slate-200 bg-white p-4" *ngFor="let score of productScores">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p class="font-semibold text-slate-950">{{ productTitle(score.productId) }}</p>
+                    <p class="mt-1 text-sm text-slate-500">{{ 'visibilityScores.analyzedPrompts' | translate }}: {{ score.analyzedPromptsCount }}</p>
+                  </div>
+                  <p class="text-2xl font-bold text-emerald-800">{{ score.score }}<span class="text-sm text-slate-500">/100</span></p>
+                </div>
+                <div class="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                  <p><b>{{ 'visibilityScores.brandMentionRate' | translate }}:</b> {{ formatRate(score.brandMentionRate) }}</p>
+                  <p><b>{{ 'visibilityScores.productMentionRate' | translate }}:</b> {{ formatRate(score.productMentionRate) }}</p>
+                  <p><b>{{ 'visibilityScores.competitorMentionRate' | translate }}:</b> {{ formatRate(score.competitorMentionRate) }}</p>
+                  <p><b>{{ 'visibilityScores.averagePosition' | translate }}:</b> {{ formatAveragePosition(score.averagePosition) }}</p>
+                  <p><b>{{ 'visibilityScores.dominantSentiment' | translate }}:</b> {{ score.dominantSentiment }}</p>
+                  <p><b>{{ 'visibilityScores.topCompetitors' | translate }}:</b> {{ score.topCompetitors.join(', ') || ('states.notAvailable' | translate) }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </ng-container>
     </section>
   `,
@@ -836,9 +889,15 @@ export class ProductsComponent {
   analysisLoading = false;
   analysisError = '';
   analysisSuccess = '';
+  scoreLoading = false;
+  scoreError = '';
+  scoreSuccess = '';
+  projectScore: ProjectVisibilityScore | null = null;
+  productScores: ProductVisibilityScore[] = [];
 
   private readonly minGenerateLoadingMs = 900;
   private readonly minAnalyzeLoadingMs = 1000;
+  private readonly minScoreLoadingMs = 1000;
 
   ngOnInit() {
     this.api.listProducts(this.projectId).subscribe({
@@ -1019,6 +1078,43 @@ export class ProductsComponent {
         });
       },
     });
+  }
+
+  computeVisibilityScores() {
+    if (this.scoreLoading) return;
+    if (!this.runs.length) {
+      this.scoreError = 'errors.SCORE_NO_PROMPT_RUNS';
+      return;
+    }
+    const startedAt = Date.now();
+    this.scoreLoading = true;
+    this.scoreError = '';
+    this.scoreSuccess = '';
+    this.api.computeScores(this.projectId).subscribe({
+      next: response => {
+        this.finishAfterMinimumDelay(startedAt, this.minScoreLoadingMs, () => {
+          this.projectScore = response.projectScore;
+          this.productScores = response.productScores;
+          this.scoreSuccess = 'visibilityScores.success';
+          this.scoreLoading = false;
+        });
+      },
+      error: (e: HttpErrorResponse) => {
+        this.finishAfterMinimumDelay(startedAt, this.minScoreLoadingMs, () => {
+          this.scoreError = this.errs.getKey((e.error as ApiError)?.code);
+          this.scoreLoading = false;
+        });
+      },
+    });
+  }
+
+  formatRate(value: number) {
+    return `${Math.round((value || 0) * 100)}%`;
+  }
+
+  formatAveragePosition(value: number | null) {
+    if (value === null || value === undefined) return this.t.instant('states.notAvailable');
+    return Number.isInteger(value) ? String(value) : value.toFixed(1);
   }
 
   availabilityClass(value?: string) {

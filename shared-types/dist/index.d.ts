@@ -1,4 +1,4 @@
-export type ApiErrorCode = 'CSV_INVALID_FILE_TYPE' | 'CSV_FILE_TOO_LARGE' | 'CSV_PARSE_ERROR' | 'CSV_EMPTY_FILE' | 'CSV_NO_COLUMNS_FOUND' | 'CSV_MAPPING_MISSING_TITLE' | 'PROJECT_NOT_FOUND' | 'PRODUCT_IMPORT_FAILED' | 'PROMPT_ANALYSIS_NO_PROMPTS' | 'PROMPT_ANALYSIS_LIMIT_EXCEEDED' | 'PROMPT_ANALYSIS_FAILED' | 'PROMPT_NOT_FOUND';
+export type ApiErrorCode = 'CSV_INVALID_FILE_TYPE' | 'CSV_FILE_TOO_LARGE' | 'CSV_PARSE_ERROR' | 'CSV_EMPTY_FILE' | 'CSV_NO_COLUMNS_FOUND' | 'CSV_MAPPING_MISSING_TITLE' | 'PROJECT_NOT_FOUND' | 'PRODUCT_IMPORT_FAILED' | 'PROMPT_ANALYSIS_NO_PROMPTS' | 'PROMPT_ANALYSIS_LIMIT_EXCEEDED' | 'PROMPT_ANALYSIS_FAILED' | 'PROMPT_NOT_FOUND' | 'SCORE_NO_PROMPT_RUNS' | 'SCORE_COMPUTE_FAILED';
 export type NormalizedProduct = {
     id: string;
     source: 'csv' | 'shopify' | 'woocommerce' | 'wix';
@@ -104,4 +104,37 @@ export type PromptAnalysisResult = {
 };
 export type AnalyzePromptsResponse = {
     results: PromptAnalysisResult[];
+};
+export type VisibilityScoreScope = 'project' | 'product';
+export type VisibilityScoreSentiment = 'positive' | 'neutral' | 'negative' | 'unknown';
+export type VisibilityScoreDetails = Record<string, unknown>;
+export type VisibilityScore = {
+    id: string;
+    projectId: string;
+    productId: string | null;
+    scope: VisibilityScoreScope;
+    score: number;
+    analyzedPromptsCount: number;
+    brandMentionRate: number;
+    productMentionRate: number;
+    competitorMentionRate: number;
+    averagePosition: number | null;
+    dominantSentiment: VisibilityScoreSentiment;
+    topCompetitors: string[];
+    details: VisibilityScoreDetails;
+    createdAt: string;
+    updatedAt: string;
+};
+export type ProductVisibilityScore = VisibilityScore & {
+    scope: 'product';
+    productId: string;
+};
+export type ProjectVisibilityScore = VisibilityScore & {
+    scope: 'project';
+    productId: null;
+};
+export type ComputeScoresRequest = Record<string, never>;
+export type ComputeScoresResponse = {
+    projectScore: ProjectVisibilityScore;
+    productScores: ProductVisibilityScore[];
 };
