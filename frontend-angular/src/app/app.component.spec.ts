@@ -180,6 +180,10 @@ const translations = {
     title: 'Analyse simulée',
     analyze: 'Analyser les réponses simulées',
     response: 'Réponse simulée',
+    brand: 'Marque mentionnée',
+    product: 'Produit mentionné',
+    competitors: 'Concurrents mentionnés',
+    sentiment: 'Sentiment',
     mockNotice: 'Simulation sans appel IA réel',
     loading: 'Analyse en cours',
     done: 'Analyse terminée',
@@ -376,7 +380,18 @@ describe('ProductsComponent Phase 2 prompts', () => {
       listPrompts: () => of([prompt]),
       updatePrompt: () => of({ ...prompt, text: 'modifié', status: 'edited', source: 'manual' }),
       deletePrompt: () => of({}),
-      analyzePrompts: () => of({ results: [{ prompt, run: { responseText: 'Réponse simulée test' } }] }),
+      analyzePrompts: () => of({
+        results: [{
+          prompt,
+          run: {
+            responseText: 'Réponse simulée test',
+            brandMentioned: true,
+            productMentioned: false,
+            competitorsMentioned: ['Stanley'],
+            sentiment: 'positive',
+          },
+        }],
+      }),
     };
 
     await TestBed.configureTestingModule({
@@ -465,5 +480,13 @@ describe('ProductsComponent Phase 2 prompts', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.analysisLoading).toBeFalse();
     expect(fixture.nativeElement.textContent).toContain('Réponse simulée test');
+    expect(fixture.nativeElement.textContent).toContain('Marque mentionnée');
+    expect(fixture.nativeElement.textContent).toContain('true');
+    expect(fixture.nativeElement.textContent).toContain('Produit mentionné');
+    expect(fixture.nativeElement.textContent).toContain('false');
+    expect(fixture.nativeElement.textContent).toContain('Concurrents mentionnés');
+    expect(fixture.nativeElement.textContent).toContain('Stanley');
+    expect(fixture.nativeElement.textContent).toContain('Sentiment');
+    expect(fixture.nativeElement.textContent).toContain('positive');
   }));
 });

@@ -790,7 +790,14 @@ export class MappingComponent {
           <p class="mt-2 text-sm text-red-700" *ngIf="analysisError">{{ analysisError | translate }}</p>
           <p class="mt-2 text-sm" *ngIf="!runs.length">{{ 'simAnalysis.empty' | translate }}</p>
           <div *ngFor="let r of runs" class="mt-3 rounded border bg-white p-3 text-sm">
-            <p><b>Prompt:</b> {{ r.prompt.text }}</p><p><b>{{ 'simAnalysis.response' | translate }}:</b> {{ r.run.responseText }}</p>
+            <p><b>Prompt:</b> {{ r.prompt.text }}</p>
+            <p><b>{{ 'simAnalysis.response' | translate }}:</b> {{ r.run.responseText }}</p>
+            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+              <p><b>{{ 'simAnalysis.brand' | translate }}:</b> {{ r.run.brandMentioned }}</p>
+              <p><b>{{ 'simAnalysis.product' | translate }}:</b> {{ r.run.productMentioned }}</p>
+              <p><b>{{ 'simAnalysis.competitors' | translate }}:</b> {{ r.run.competitorsMentioned.join(', ') || ('states.notAvailable' | translate) }}</p>
+              <p><b>{{ 'simAnalysis.sentiment' | translate }}:</b> {{ r.run.sentiment }}</p>
+            </div>
           </div>
         </div>
 
