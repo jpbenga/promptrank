@@ -3,6 +3,7 @@ node_modules
 backend-nest/.env
 backend-nest/dist
 frontend-angular/dist
+shared-types/dist
 coverage
 .tmp
 .angular/

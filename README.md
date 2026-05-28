@@ -1,4 +1,14 @@
-# PromptRank - Phase 1 CSV
+# PromptRank - Phase 5 action cards
+
+## État des phases
+- Phase 1 — CSV import / mapping / produits normalisés : validée.
+- Phase 2 — Génération de prompts : validée.
+- Phase 3 — Analyse simulée : validée.
+- Phase 4 — Scoring de visibilité : validée.
+- Phase 5 — Recommandations / action cards : validée.
+- Phase 6 — Intégrations IA réelles : non commencée.
+
+Le projet fonctionne encore sans API IA réelle. Les Phases 3 à 5 reposent sur des mocks et des règles déterministes locales. `pnpm verify` couvre les tests principaux, tandis que les E2E complets restent hors critère bloquant pour l’instant.
 
 ## Versions stables/LTS
 - Node.js 22 LTS
@@ -39,7 +49,7 @@ Commandes utiles :
 pnpm test              # tests API unitaires + intégration DB, puis tests Angular
 pnpm test:api          # prépare la DB de test, puis lance unitaires + intégration backend
 pnpm test:web          # tests Angular/Karma
-pnpm test:integration  # prépare la DB de test, puis lance l'intégration API Phases 1 à 4
+pnpm test:integration  # prépare la DB de test, puis lance l'intégration API Phases 1 à 5
 pnpm test:e2e          # Playwright, nécessite pnpm dev déjà lancé
 pnpm lint
 pnpm build
@@ -101,10 +111,8 @@ Les tests verrouillent le périmètre Phase 1 :
 ## Redis (statut réel)
 Redis est volontairement hors périmètre Phase 1. Il sera introduit plus tard si besoin pour des jobs async.
 
-## Limites actuelles et prochaines phases
-- Phase 1 couvre uniquement CSV.
-- Hors périmètre: Shopify, prompts IA, analyse IA, scoring, action cards, billing.
-- Phase 2 traitera l'extension fonctionnelle après stabilisation.
+## Packaging shared-types
+`@promptrank/shared-types` est consommé directement depuis `shared-types/src/index.ts` via son `package.json` et le mapping TypeScript frontend. Le dossier `shared-types/dist` n’est pas utilisé au runtime ni par les imports workspace ; il est ignoré et ne doit pas être versionné.
 
 ## Phase 2 - Génération de prompts d'achat (déterministe)
 - Génération locale, déterministe, via templates FR/EN (aucune API IA externe).
@@ -229,7 +237,28 @@ Tests Phase 5:
 - intégration backend: `backend-nest/test/phase5.action-cards.integration.spec.ts`, inclus dans `pnpm test:integration` et donc dans `pnpm verify`;
 - Angular: génération, loading, cards, priorité, impact, effort, catégorie, statut done/dismissed et erreur traduite.
 
-### Dette technique
-- E2E Phase 2 complet à renforcer plus tard.
-- E2E Phase 3 complet à envisager après stabilisation.
-- E2E Phase 4/5 complet à envisager après stabilisation.
+## Dettes techniques connues
+- Renforcer les E2E complets Phase 2 / Phase 3 / Phase 4 / Phase 5.
+- Surveiller la stratégie `shared-types/dist` : la stratégie actuelle est source-first, avec `dist` ignoré.
+- Améliorer progressivement la séparation frontend : `frontend-angular/src/app/app.component.ts` concentre beaucoup de logique applicative.
+- Garder le provider mock comme fallback obligatoire avant toute IA réelle.
+
+## Préparation Phase 6
+La Phase 6 prévue introduira une abstraction de provider IA sans brancher d’appel réel dans cette consolidation.
+
+Cadrage prévu :
+- introduire une abstraction de provider IA ;
+- conserver le provider mock par défaut ;
+- ajouter un provider réel optionnel plus tard, probablement OpenAI en premier ;
+- ne jamais appeler un provider réel sans clé API explicite ;
+- ne jamais faire échouer l’application si aucune clé API n’est configurée ;
+- tester les providers réels avec mocks, sans appels réseau réels ;
+- documenter coûts, timeouts, erreurs et limites.
+
+Hors périmètre actuel :
+- pas d’appel OpenAI réel ;
+- pas d’appel Gemini réel ;
+- pas d’appel Perplexity réel ;
+- pas de scoring IA avancé ;
+- pas de Shopify ;
+- pas de billing.
