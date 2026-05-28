@@ -16,7 +16,12 @@ export type ApiErrorCode =
   | 'ACTION_CARDS_NO_SCORES'
   | 'ACTION_CARD_NOT_FOUND'
   | 'ACTION_CARD_UPDATE_INVALID'
-  | 'ACTION_CARDS_GENERATION_FAILED';
+  | 'ACTION_CARDS_GENERATION_FAILED'
+  | 'AI_PROVIDER_UNSUPPORTED'
+  | 'AI_PROVIDER_DISABLED'
+  | 'AI_PROVIDER_NOT_CONFIGURED'
+  | 'AI_PROVIDER_REQUEST_FAILED'
+  | 'AI_PROVIDER_TIMEOUT';
 
 export type NormalizedProduct = {
   id: string;
@@ -104,7 +109,27 @@ export type UpdatePromptRequest = {
 };
 
 
-export type PromptRunProvider = 'mock';
+export type AiProvider = 'mock' | 'openai';
+export type AiProviderStatus = 'available' | 'disabled' | 'not_configured';
+export type AiProviderConfig = {
+  provider: AiProvider;
+  status: AiProviderStatus;
+  model: string;
+  realProvidersEnabled: boolean;
+  timeoutMs: number;
+};
+export type AiProviderResponseStatus = 'completed' | 'failed';
+export type AiProviderResponse = {
+  provider: AiProvider;
+  model: string;
+  responseText: string;
+  status: AiProviderResponseStatus;
+  rawMetadata?: Record<string, unknown>;
+  latencyMs?: number;
+  tokenUsage?: Record<string, number>;
+};
+
+export type PromptRunProvider = AiProvider;
 export type PromptRunStatus = 'completed' | 'failed';
 export type PromptRunSentiment = 'positive' | 'neutral' | 'negative' | 'unknown';
 
@@ -114,7 +139,7 @@ export type PromptRun = {
   productId: string;
   promptId: string;
   provider: PromptRunProvider;
-  model: 'mock-v1';
+  model: string;
   responseText: string;
   brandMentioned: boolean;
   productMentioned: boolean;
@@ -126,7 +151,18 @@ export type PromptRun = {
   updatedAt: string;
 };
 
-export type AnalyzePromptsRequest = { promptIds: string[] };
+export type GenerateProviderResponseRequest = {
+  projectId: string;
+  productId: string;
+  promptId: string;
+  promptText: string;
+  language: string;
+  country: string;
+  product: NormalizedProduct;
+  provider?: AiProvider;
+};
+
+export type AnalyzePromptsRequest = { promptIds: string[]; provider?: AiProvider };
 export type PromptAnalysisResult = { prompt: ProductPrompt; run: PromptRun };
 export type AnalyzePromptsResponse = { results: PromptAnalysisResult[] };
 

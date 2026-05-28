@@ -6,13 +6,17 @@ describe('PromptsService', () => {
     project: { findUnique: jest.fn() },
     product: { findMany: jest.fn() },
     productPrompt: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    promptRun: { create: jest.fn() },
   };
-  const service = new PromptsService(prisma);
+  const aiProviders: any = { generateResponse: jest.fn() };
+  const service = new PromptsService(prisma, aiProviders);
 
   beforeEach(() => {
     jest.clearAllMocks();
     prisma.project.findUnique.mockResolvedValue({ id: 'p1', primaryLanguage: 'fr', targetCountry: 'FR' });
     prisma.productPrompt.create.mockImplementation(({ data }: any) => Promise.resolve({ id: `pp-${data.position}`, ...data }));
+    aiProviders.generateResponse.mockResolvedValue({ provider: 'mock', model: 'mock-v1', responseText: 'HydroPeak Gourde Inox est recommandée.', status: 'completed' });
+    prisma.promptRun.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'run-1', createdAt: new Date(), updatedAt: new Date(), ...data }));
   });
 
   it('generates 5 prompts/product in FR and no BPA when absent', async () => {
@@ -70,5 +74,36 @@ describe('PromptsService', () => {
     expect(out.status).toBe('disabled');
     const listed = await service.listProject('p1');
     expect(listed.every((p: any) => p.status !== 'disabled')).toBe(true);
+  });
+
+  it('analyzes with default provider and stores provider/model', async () => {
+    const prompt = { id: 'prompt-1', projectId: 'p1', productId: 'product-1', text: 'prompt', language: 'fr', country: 'FR', intent: 'best', source: 'template', status: 'proposed', position: 0, createdAt: new Date(), updatedAt: new Date() };
+    prisma.productPrompt.findMany.mockResolvedValue([prompt]);
+    prisma.product.findMany.mockResolvedValue([{ id: 'product-1', title: 'Gourde Inox', brand: 'HydroPeak' }]);
+
+    const response = await service.analyze('p1', { promptIds: ['prompt-1'] });
+
+    expect(aiProviders.generateResponse).toHaveBeenCalledWith(expect.objectContaining({ promptId: 'prompt-1' }), undefined);
+    expect(prisma.promptRun.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ provider: 'mock', model: 'mock-v1' }),
+    }));
+    expect(response.results[0].run.provider).toBe('mock');
+    expect(response.results[0].run.model).toBe('mock-v1');
+  });
+
+  it('stores an explicit openai provider/model returned by the provider layer', async () => {
+    const prompt = { id: 'prompt-1', projectId: 'p1', productId: 'product-1', text: 'prompt', language: 'fr', country: 'FR', intent: 'best', source: 'template', status: 'proposed', position: 0, createdAt: new Date(), updatedAt: new Date() };
+    aiProviders.generateResponse.mockResolvedValueOnce({ provider: 'openai', model: 'gpt-test', responseText: 'HydroPeak Gourde Inox est recommandée.', status: 'completed' });
+    prisma.productPrompt.findMany.mockResolvedValue([prompt]);
+    prisma.product.findMany.mockResolvedValue([{ id: 'product-1', title: 'Gourde Inox', brand: 'HydroPeak' }]);
+
+    const response = await service.analyze('p1', { promptIds: ['prompt-1'], provider: 'openai' });
+
+    expect(aiProviders.generateResponse).toHaveBeenCalledWith(expect.objectContaining({ promptId: 'prompt-1' }), 'openai');
+    expect(prisma.promptRun.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ provider: 'openai', model: 'gpt-test' }),
+    }));
+    expect(response.results[0].run.provider).toBe('openai');
+    expect(response.results[0].run.model).toBe('gpt-test');
   });
 });

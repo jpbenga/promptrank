@@ -189,6 +189,14 @@ const translations = {
     done: 'Analyse terminée',
     empty: "Aucun résultat d'analyse",
   },
+  aiProvider: {
+    label: 'Provider IA',
+    mock: 'Mock local',
+    openai: 'OpenAI',
+    openaiNotice: 'Provider réel configuré côté serveur',
+    openaiRequiresBackend: 'OpenAI nécessite une configuration backend',
+    noRealCallWithoutConfig: 'Aucun appel IA réel sans configuration explicite',
+  },
   visibilityScores: {
     title: 'Scores de visibilité',
     help: 'Le score est calculé depuis les analyses simulées existantes, sans appel IA réel.',
@@ -244,6 +252,8 @@ const translations = {
     PROMPT_ANALYSIS_NO_PROMPTS: 'Aucun prompt sélectionné',
     SCORE_NO_PROMPT_RUNS: "Aucun run d'analyse disponible",
     ACTION_CARDS_NO_SCORES: 'Aucun score disponible',
+    AI_PROVIDER_DISABLED: 'Provider IA désactivé',
+    AI_PROVIDER_NOT_CONFIGURED: 'Provider IA non configuré',
   },
 };
 
@@ -504,17 +514,22 @@ describe('ProductsComponent Phase 2 prompts', () => {
     generatedCount: 1,
   };
   let apiMock: any;
+  let lastAnalyzeProvider: string | undefined;
 
   beforeEach(async () => {
+    lastAnalyzeProvider = undefined;
     apiMock = {
       listProducts: () => of(products),
       generatePrompts: () => of({ generatedCount: 1, promptsByProduct: { p1: [prompt] } }),
       listPrompts: () => of([prompt]),
       updatePrompt: () => of({ ...prompt, text: 'modifié', status: 'edited', source: 'manual' }),
       deletePrompt: () => of({}),
-      analyzePrompts: () => of({
+      analyzePrompts: (_projectId: string, _promptIds: string[], provider?: string) => {
+        lastAnalyzeProvider = provider;
+        return of({
         results: [analysisResult],
-      }),
+        });
+      },
       computeScores: () => of(scoreResponse),
       generateActionCards: () => of(actionCardsResponse),
       updateActionCard: (_projectId: string, _id: string, payload: any) => of({ ...actionCard, status: payload.status }),
@@ -614,6 +629,63 @@ describe('ProductsComponent Phase 2 prompts', () => {
     expect(fixture.nativeElement.textContent).toContain('Stanley');
     expect(fixture.nativeElement.textContent).toContain('Sentiment');
     expect(fixture.nativeElement.textContent).toContain('positive');
+    expect(lastAnalyzeProvider).toBe('mock');
+  }));
+
+  it('shows mock as default AI provider and no frontend API key field', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.detectChanges();
+
+    const select: HTMLSelectElement = fixture.nativeElement.querySelector('select[name="aiProvider"]');
+    expect(select).toBeTruthy();
+    expect(fixture.componentInstance.selectedAiProvider).toBe('mock');
+    expect(fixture.nativeElement.textContent).toContain('Simulation sans appel IA réel');
+    expect(fixture.nativeElement.textContent).toContain('Aucun appel IA réel sans configuration explicite');
+    expect(fixture.nativeElement.textContent).not.toContain('OPENAI_API_KEY');
+  }));
+
+  it('changes AI provider to openai and sends it to analyze', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.componentInstance.togglePromptSelection('pr1', { target: { checked: true } } as unknown as Event);
+    fixture.componentInstance.selectedAiProvider = 'openai';
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Provider réel configuré côté serveur');
+    fixture.componentInstance.analyzeSelectedPrompts();
+    tick(1000);
+    fixture.detectChanges();
+
+    expect(lastAnalyzeProvider).toBe('openai');
+  }));
+
+  it('translates AI provider disabled and not configured errors', fakeAsync(() => {
+    apiMock.analyzePrompts = (_projectId: string, _promptIds: string[], provider?: string) => {
+      lastAnalyzeProvider = provider;
+      return throwError(() => ({ error: { code: provider === 'openai' ? 'AI_PROVIDER_DISABLED' : 'AI_PROVIDER_NOT_CONFIGURED' } }));
+    };
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.prompts = [prompt as any];
+    fixture.componentInstance.togglePromptSelection('pr1', { target: { checked: true } } as unknown as Event);
+    fixture.componentInstance.selectedAiProvider = 'openai';
+    fixture.componentInstance.analyzeSelectedPrompts();
+    tick(1000);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Provider IA désactivé');
+
+    apiMock.analyzePrompts = () => throwError(() => ({ error: { code: 'AI_PROVIDER_NOT_CONFIGURED' } }));
+    fixture.componentInstance.analyzeSelectedPrompts();
+    tick(1000);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Provider IA non configuré');
   }));
 
   it('keeps visibility score button disabled until simulated analysis has run', fakeAsync(() => {

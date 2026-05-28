@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import type { AnalyzePromptsRequest, AnalyzePromptsResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, PromptAnalysisResult, PromptIntent, PromptRun, PromptRunSentiment, PromptSource, PromptStatus, UpdatePromptRequest } from '@promptrank/shared-types';
 import type { ProductPrompt as PrismaProductPrompt, PromptRun as PrismaPromptRun } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
+import { AiProviderOrchestratorService } from '../ai-providers/ai-provider.service';
 
 type ProductRecord = {
   id: string;
@@ -16,7 +17,7 @@ type ProductRecord = {
 
 @Injectable()
 export class PromptsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly aiProviders: AiProviderOrchestratorService) {}
   private readonly maxProducts = 5;
   private readonly maxPromptsPerProduct = 5;
   private readonly validIntents: readonly PromptIntent[] = ['best', 'cheap', 'alternative', 'use_case', 'comparison', 'problem_solution', 'gift', 'local'];
@@ -61,20 +62,7 @@ export class PromptsService {
   private competitorDictionary = ['Stanley', 'Quechua', 'Decathlon', 'Nike', 'Adidas', 'Apple', 'Samsung', 'Amazon Basics', 'Anker'];
 
   private toPromptRunDto(run: PrismaPromptRun): PromptRun {
-    return { ...run, provider: 'mock', model: 'mock-v1', status: run.status as 'completed' | 'failed', sentiment: run.sentiment as PromptRunSentiment, competitorsMentioned: Array.isArray(run.competitorsMentioned) ? run.competitorsMentioned.map(String) : [], position: run.position ?? null, createdAt: run.createdAt.toISOString(), updatedAt: run.updatedAt.toISOString() };
-  }
-
-  private simulateResponse(prompt: PrismaProductPrompt, product: ProductRecord): string {
-    const seed = (prompt.text + (product.title || '') + (product.brand || '')).length % 5;
-    const brand = product.brand || 'Cette marque';
-    const title = product.title || 'ce produit';
-    const competitors = this.competitorDictionary.slice(seed, seed + 2);
-    const prefix = prompt.language.startsWith('fr') ? 'Pour ce besoin' : 'For this need';
-    if (seed === 0) return `${prefix}, ${brand} est une option pertinente. ${title} peut convenir. Alternatives: ${competitors.join(' et ')}.`;
-    if (seed === 1) return `${prefix}, ${title} est souvent cité. Des alternatives incluent ${competitors.join(' and ')}.`;
-    if (seed === 2) return `${prefix}, des options comme ${competitors.join(' et ')} sont souvent recommandées.`;
-    if (seed === 3) return `${prefix}, cette option reste correcte sans avantage clair.`;
-    return `${prefix}, ${brand} peut être envisagé mais certains retours sont mitigés.`;
+    return { ...run, provider: run.provider as 'mock' | 'openai', model: run.model, status: run.status as 'completed' | 'failed', sentiment: run.sentiment as PromptRunSentiment, competitorsMentioned: Array.isArray(run.competitorsMentioned) ? run.competitorsMentioned.map(String) : [], position: run.position ?? null, createdAt: run.createdAt.toISOString(), updatedAt: run.updatedAt.toISOString() };
   }
 
   private analyzeResponse(text: string, product: ProductRecord): Pick<PromptRun, 'brandMentioned'|'productMentioned'|'competitorsMentioned'|'position'|'sentiment'> {
@@ -202,7 +190,8 @@ export class PromptsService {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: 'Project not found' });
     if (!body.promptIds?.length) throw new BadRequestException({ code: 'PROMPT_ANALYSIS_NO_PROMPTS', message: 'No prompt selected' });
-    if (body.promptIds.length > 25) throw new BadRequestException({ code: 'PROMPT_ANALYSIS_LIMIT_EXCEEDED', message: 'Limit exceeded' });
+    const maxPromptsPerRun = Number(process.env.AI_MAX_PROMPTS_PER_RUN || 25);
+    if (body.promptIds.length > maxPromptsPerRun) throw new BadRequestException({ code: 'PROMPT_ANALYSIS_LIMIT_EXCEEDED', message: 'Limit exceeded' });
     const prompts = await this.prisma.productPrompt.findMany({ where: { id: { in: body.promptIds }, projectId } });
     if (prompts.length !== body.promptIds.length) throw new NotFoundException({ code: 'PROMPT_NOT_FOUND', message: 'Prompt not found' });
     const products = await this.prisma.product.findMany({ where: { id: { in: prompts.map(p=>p.productId) }, projectId } }) as ProductRecord[];
@@ -211,13 +200,24 @@ export class PromptsService {
       const results: PromptAnalysisResult[] = [];
       for (const prompt of prompts) {
         const product = map.get(prompt.productId)!;
-        const responseText = this.simulateResponse(prompt, product);
-        const analysis = this.analyzeResponse(responseText, product);
-        const run = await this.prisma.promptRun.create({ data: { projectId, productId: prompt.productId, promptId: prompt.id, provider: 'mock', model: 'mock-v1', responseText, ...analysis, status: 'completed' } });
+        const providerResponse = await this.aiProviders.generateResponse({
+          projectId,
+          productId: prompt.productId,
+          promptId: prompt.id,
+          promptText: prompt.text,
+          language: prompt.language,
+          country: prompt.country,
+          product,
+        }, body.provider);
+        const analysis = this.analyzeResponse(providerResponse.responseText, product);
+        const run = await this.prisma.promptRun.create({ data: { projectId, productId: prompt.productId, promptId: prompt.id, provider: providerResponse.provider, model: providerResponse.model, responseText: providerResponse.responseText, ...analysis, status: providerResponse.status === 'completed' ? 'completed' : 'failed' } });
         results.push({ prompt: this.toProductPromptDto(prompt), run: this.toPromptRunDto(run) });
       }
       return { results };
-    } catch { throw new BadRequestException({ code: 'PROMPT_ANALYSIS_FAILED', message: 'Prompt analysis failed' }); }
+    } catch (error) {
+      if (error instanceof BadRequestException || error instanceof NotFoundException) throw error;
+      throw new BadRequestException({ code: 'PROMPT_ANALYSIS_FAILED', message: 'Prompt analysis failed' });
+    }
   }
 
   listRunsByProject(projectId: string): Promise<PromptRun[]> { return this.prisma.promptRun.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' } }).then(r=>r.map(x=>this.toPromptRunDto(x))); }
