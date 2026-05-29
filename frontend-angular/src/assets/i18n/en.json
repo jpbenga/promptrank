@@ -256,7 +256,12 @@
     "ACTION_CARDS_NO_SCORES": "No score available",
     "ACTION_CARD_NOT_FOUND": "Action card not found",
     "ACTION_CARD_UPDATE_INVALID": "Invalid action card update",
-    "ACTION_CARDS_GENERATION_FAILED": "Recommendation generation failed"
+    "ACTION_CARDS_GENERATION_FAILED": "Recommendation generation failed",
+    "AI_PROVIDER_UNSUPPORTED": "Unsupported AI provider",
+    "AI_PROVIDER_DISABLED": "AI provider disabled",
+    "AI_PROVIDER_NOT_CONFIGURED": "AI provider not configured",
+    "AI_PROVIDER_REQUEST_FAILED": "Provider request failed",
+    "AI_PROVIDER_TIMEOUT": "AI provider timeout"
   },
   "prompts": {
     "title": "Prompts",
@@ -308,6 +313,14 @@
     "done": "Analysis completed",
     "noPrompt": "No prompt selected",
     "empty": "No analysis result"
+  },
+  "aiProvider": {
+    "label": "AI provider",
+    "mock": "Local mock",
+    "openai": "OpenAI",
+    "openaiNotice": "Real provider configured server-side",
+    "openaiRequiresBackend": "OpenAI requires backend configuration",
+    "noRealCallWithoutConfig": "No real AI call without explicit configuration"
   },
   "visibilityScores": {
     "title": "Visibility scores",

@@ -1,4 +1,4 @@
-# PromptRank - Phase 5 action cards
+# PromptRank - Phase 6 AI provider abstraction
 
 ## État des phases
 - Phase 1 — CSV import / mapping / produits normalisés : validée.
@@ -6,9 +6,9 @@
 - Phase 3 — Analyse simulée : validée.
 - Phase 4 — Scoring de visibilité : validée.
 - Phase 5 — Recommandations / action cards : validée.
-- Phase 6 — Intégrations IA réelles : non commencée.
+- Phase 6 — Abstraction providers IA : préparée, mock par défaut, OpenAI optionnel désactivé par défaut.
 
-Le projet fonctionne encore sans API IA réelle. Les Phases 3 à 5 reposent sur des mocks et des règles déterministes locales. `pnpm verify` couvre les tests principaux, tandis que les E2E complets restent hors critère bloquant pour l’instant.
+Le projet fonctionne encore sans API IA réelle. Le provider `mock` reste le chemin par défaut, et OpenAI ne peut être appelé que si le backend est explicitement configuré avec `AI_REAL_PROVIDERS_ENABLED=true` et `OPENAI_API_KEY`. `pnpm verify` couvre les tests principaux, tandis que les E2E complets restent hors critère bloquant pour l’instant.
 
 ## Versions stables/LTS
 - Node.js 22 LTS
@@ -107,6 +107,17 @@ Les tests verrouillent le périmètre Phase 1 :
 ## CSV size limit
 - Variable d'env: `CSV_MAX_FILE_SIZE_MB`.
 - Si dépassée: code `CSV_FILE_TOO_LARGE`.
+
+## Configuration IA
+Variables backend:
+- `AI_PROVIDER_DEFAULT=mock`: provider utilisé quand l’API ne reçoit pas de provider explicite.
+- `AI_REAL_PROVIDERS_ENABLED=false`: garde-fou global. Tant que cette valeur n’est pas `true`, aucun provider réel n’est appelé.
+- `OPENAI_API_KEY=`: clé OpenAI côté backend uniquement, jamais exposée au frontend.
+- `OPENAI_MODEL=gpt-4.1-mini`: modèle demandé si OpenAI est activé.
+- `AI_REQUEST_TIMEOUT_MS=15000`: timeout des requêtes provider.
+- `AI_MAX_PROMPTS_PER_RUN=25`: limite de prompts par analyse.
+
+Les tests mockent les providers et ne font aucun appel réseau réel.
 
 ## Redis (statut réel)
 Redis est volontairement hors périmètre Phase 1. Il sera introduit plus tard si besoin pour des jobs async.
@@ -237,28 +248,40 @@ Tests Phase 5:
 - intégration backend: `backend-nest/test/phase5.action-cards.integration.spec.ts`, inclus dans `pnpm test:integration` et donc dans `pnpm verify`;
 - Angular: génération, loading, cards, priorité, impact, effort, catégorie, statut done/dismissed et erreur traduite.
 
+## Phase 6 — Abstraction providers IA
+
+Flow: prompt → provider IA sélectionné → réponse provider → analyse déterministe → scores → action cards.
+
+Providers disponibles:
+- `mock`: local, déterministe, provider par défaut.
+- `openai`: optionnel, désactivé par défaut, configuré uniquement côté backend.
+
+`POST /projects/:projectId/prompts/analyze` accepte maintenant un champ optionnel:
+```json
+{
+  "promptIds": ["..."],
+  "provider": "mock"
+}
+```
+
+Règles:
+- provider absent: `AI_PROVIDER_DEFAULT`, ou `mock` par défaut ;
+- `provider=mock`: aucun appel IA réel ;
+- `provider=openai` avec `AI_REAL_PROVIDERS_ENABLED` différent de `true`: `AI_PROVIDER_DISABLED` ;
+- `provider=openai` sans `OPENAI_API_KEY`: `AI_PROVIDER_NOT_CONFIGURED` ;
+- provider inconnu: `AI_PROVIDER_UNSUPPORTED` ;
+- timeout: `AI_PROVIDER_TIMEOUT` ;
+- erreur provider: `AI_PROVIDER_REQUEST_FAILED`.
+
+OpenAI est préparé avec `fetch` natif, mais aucun appel réel n’est requis pour lancer l’application ou `pnpm verify`. Gemini, Perplexity, scraping, Shopify, billing et scoring IA avancé restent hors périmètre.
+
+Tests Phase 6:
+- unitaires backend: orchestration provider, OpenAI désactivé/non configuré, timeout, erreurs, absence de logs de clé ;
+- intégration backend: `backend-nest/test/phase6.ai-providers.integration.spec.ts`, inclus dans `pnpm test:integration` et `pnpm verify`;
+- Angular: choix provider, provider mock par défaut, provider envoyé à l’API, erreurs traduites et absence de champ clé API.
+
 ## Dettes techniques connues
-- Renforcer les E2E complets Phase 2 / Phase 3 / Phase 4 / Phase 5.
+- Renforcer les E2E complets Phase 2 / Phase 3 / Phase 4 / Phase 5 / Phase 6.
 - Surveiller la stratégie `shared-types/dist` : la stratégie actuelle est source-first, avec `dist` ignoré.
 - Améliorer progressivement la séparation frontend : `frontend-angular/src/app/app.component.ts` concentre beaucoup de logique applicative.
 - Garder le provider mock comme fallback obligatoire avant toute IA réelle.
-
-## Préparation Phase 6
-La Phase 6 prévue introduira une abstraction de provider IA sans brancher d’appel réel dans cette consolidation.
-
-Cadrage prévu :
-- introduire une abstraction de provider IA ;
-- conserver le provider mock par défaut ;
-- ajouter un provider réel optionnel plus tard, probablement OpenAI en premier ;
-- ne jamais appeler un provider réel sans clé API explicite ;
-- ne jamais faire échouer l’application si aucune clé API n’est configurée ;
-- tester les providers réels avec mocks, sans appels réseau réels ;
-- documenter coûts, timeouts, erreurs et limites.
-
-Hors périmètre actuel :
-- pas d’appel OpenAI réel ;
-- pas d’appel Gemini réel ;
-- pas d’appel Perplexity réel ;
-- pas de scoring IA avancé ;
-- pas de Shopify ;
-- pas de billing.

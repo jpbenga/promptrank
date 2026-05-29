@@ -5,7 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute, Router, pro
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 
-import type { ActionCard, ActionCardStatus, AnalyzePromptsResponse, ComputeScoresResponse, GenerateActionCardsResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, ProductVisibilityScore, ProjectVisibilityScore, PromptRun, UpdateActionCardRequest, UpdatePromptRequest, VisibilityScore } from '@promptrank/shared-types';
+import type { ActionCard, ActionCardStatus, AiProvider, AnalyzePromptsResponse, ComputeScoresResponse, GenerateActionCardsResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, ProductVisibilityScore, ProjectVisibilityScore, PromptRun, UpdateActionCardRequest, UpdatePromptRequest, VisibilityScore } from '@promptrank/shared-types';
 type ApiError = { code?: string; message?: string };
 const API_URL = 'http://localhost:3000';
 const CSV_MAX_FILE_SIZE_MB = 5;
@@ -32,6 +32,11 @@ export class ErrorI18nService {
     ACTION_CARD_NOT_FOUND: 'errors.ACTION_CARD_NOT_FOUND',
     ACTION_CARD_UPDATE_INVALID: 'errors.ACTION_CARD_UPDATE_INVALID',
     ACTION_CARDS_GENERATION_FAILED: 'errors.ACTION_CARDS_GENERATION_FAILED',
+    AI_PROVIDER_UNSUPPORTED: 'errors.AI_PROVIDER_UNSUPPORTED',
+    AI_PROVIDER_DISABLED: 'errors.AI_PROVIDER_DISABLED',
+    AI_PROVIDER_NOT_CONFIGURED: 'errors.AI_PROVIDER_NOT_CONFIGURED',
+    AI_PROVIDER_REQUEST_FAILED: 'errors.AI_PROVIDER_REQUEST_FAILED',
+    AI_PROVIDER_TIMEOUT: 'errors.AI_PROVIDER_TIMEOUT',
   };
 
   getKey(code?: string) { return this.map[code || ''] || 'errors.UNKNOWN'; }
@@ -50,7 +55,7 @@ export class ApiService {
   listPrompts(projectId: string) { return this.http.get<ProductPrompt[]>(`${API_URL}/projects/${projectId}/prompts`); }
   updatePrompt(projectId: string, promptId: string, payload: UpdatePromptRequest) { return this.http.patch<ProductPrompt>(`${API_URL}/projects/${projectId}/prompts/${promptId}`, payload); }
   deletePrompt(projectId: string, promptId: string) { return this.http.delete<any>(`${API_URL}/projects/${projectId}/prompts/${promptId}`); }
-  analyzePrompts(projectId: string, promptIds: string[]) { return this.http.post<AnalyzePromptsResponse>(`${API_URL}/projects/${projectId}/prompts/analyze`, { promptIds }); }
+  analyzePrompts(projectId: string, promptIds: string[], provider?: AiProvider) { return this.http.post<AnalyzePromptsResponse>(`${API_URL}/projects/${projectId}/prompts/analyze`, { promptIds, provider }); }
   computeScores(projectId: string) { return this.http.post<ComputeScoresResponse>(`${API_URL}/projects/${projectId}/scores/compute`, {}); }
   listScores(projectId: string) { return this.http.get<VisibilityScore[]>(`${API_URL}/projects/${projectId}/scores`); }
   getProjectScore(projectId: string) { return this.http.get<ProjectVisibilityScore | null>(`${API_URL}/projects/${projectId}/scores/project`); }
@@ -794,7 +799,15 @@ export class MappingComponent {
 
         <div class="rounded-2xl border border-purple-200 bg-purple-50 p-4" *ngIf="prompts.length">
           <h3 class="text-lg font-bold">{{ 'simAnalysis.title' | translate }}</h3>
-          <p class="text-sm text-purple-800">{{ 'simAnalysis.mockNotice' | translate }}</p>
+          <p class="text-sm text-purple-800">{{ providerHelpKey() | translate }}</p>
+          <div class="mt-3 rounded-xl border border-purple-100 bg-white p-3">
+            <label for="ai-provider" class="block text-sm font-semibold text-slate-950">{{ 'aiProvider.label' | translate }}</label>
+            <select id="ai-provider" name="aiProvider" [(ngModel)]="selectedAiProvider" [disabled]="analysisLoading" class="mt-2 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30">
+              <option value="mock">{{ 'aiProvider.mock' | translate }}</option>
+              <option value="openai">{{ 'aiProvider.openai' | translate }}</option>
+            </select>
+            <p class="mt-2 text-xs text-slate-600">{{ 'aiProvider.noRealCallWithoutConfig' | translate }}</p>
+          </div>
 	          <button type="button" (click)="analyzeSelectedPrompts()" [disabled]="selectedPromptCountValue === 0 || analysisLoading" class="mt-3 inline-flex items-center justify-center rounded-lg bg-purple-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-slate-300">
 	            <span class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" *ngIf="analysisLoading"></span>
 	            {{ (analysisLoading ? 'simAnalysis.loading' : 'simAnalysis.analyze') | translate }}
@@ -973,6 +986,7 @@ export class ProductsComponent {
   promptSaveError: Record<string, string> = {};
   selectedPrompts: Record<string, boolean> = {};
   selectedPromptCountValue = 0;
+  selectedAiProvider: AiProvider = 'mock';
   runs: { prompt: ProductPrompt; run: PromptRun }[] = [];
   analysisLoading = false;
   analysisError = '';
@@ -1161,7 +1175,7 @@ export class ProductsComponent {
     if (!ids.length) { this.analysisError = 'errors.PROMPT_ANALYSIS_NO_PROMPTS'; return; }
     const startedAt = Date.now();
     this.analysisLoading = true; this.analysisError=''; this.analysisSuccess=''; this.runs=[];
-    this.api.analyzePrompts(this.projectId, ids).subscribe({
+    this.api.analyzePrompts(this.projectId, ids, this.selectedAiProvider).subscribe({
       next: (response) => {
         this.finishAfterMinimumDelay(startedAt, this.minAnalyzeLoadingMs, () => {
           this.runs = response.results;
@@ -1295,6 +1309,10 @@ export class ProductsComponent {
   formatAveragePosition(value: number | null) {
     if (value === null || value === undefined) return this.t.instant('states.notAvailable');
     return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  }
+
+  providerHelpKey() {
+    return this.selectedAiProvider === 'openai' ? 'aiProvider.openaiNotice' : 'simAnalysis.mockNotice';
   }
 
   availabilityClass(value?: string) {

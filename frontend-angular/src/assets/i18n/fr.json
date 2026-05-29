@@ -256,7 +256,12 @@
     "ACTION_CARDS_NO_SCORES": "Aucun score disponible",
     "ACTION_CARD_NOT_FOUND": "Action card introuvable",
     "ACTION_CARD_UPDATE_INVALID": "Mise à jour de l’action card invalide",
-    "ACTION_CARDS_GENERATION_FAILED": "Erreur lors de la génération des recommandations"
+    "ACTION_CARDS_GENERATION_FAILED": "Erreur lors de la génération des recommandations",
+    "AI_PROVIDER_UNSUPPORTED": "Provider IA non supporté",
+    "AI_PROVIDER_DISABLED": "Provider IA désactivé",
+    "AI_PROVIDER_NOT_CONFIGURED": "Provider IA non configuré",
+    "AI_PROVIDER_REQUEST_FAILED": "Requête provider échouée",
+    "AI_PROVIDER_TIMEOUT": "Timeout provider IA"
   },
   "prompts": {
     "title": "Prompts",
@@ -308,6 +313,14 @@
     "done": "Analyse terminée",
     "noPrompt": "Aucun prompt sélectionné",
     "empty": "Aucun résultat d’analyse"
+  },
+  "aiProvider": {
+    "label": "Provider IA",
+    "mock": "Mock local",
+    "openai": "OpenAI",
+    "openaiNotice": "Provider réel configuré côté serveur",
+    "openaiRequiresBackend": "OpenAI nécessite une configuration backend",
+    "noRealCallWithoutConfig": "Aucun appel IA réel sans configuration explicite"
   },
   "visibilityScores": {
     "title": "Scores de visibilité",
