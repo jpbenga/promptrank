@@ -21,7 +21,11 @@ export type ApiErrorCode =
   | 'AI_PROVIDER_DISABLED'
   | 'AI_PROVIDER_NOT_CONFIGURED'
   | 'AI_PROVIDER_REQUEST_FAILED'
-  | 'AI_PROVIDER_TIMEOUT';
+  | 'AI_PROVIDER_TIMEOUT'
+  | 'SHOPIFY_INVALID_DOMAIN'
+  | 'SHOPIFY_REAL_SYNC_DISABLED'
+  | 'SHOPIFY_CONNECTION_NOT_FOUND'
+  | 'SHOPIFY_SYNC_FAILED';
 
 export type NormalizedProduct = {
   id: string;
@@ -258,4 +262,54 @@ export type UpdateActionCardRequest = {
   title?: string;
   description?: string;
   recommendation?: string;
+};
+
+export type ShopifyConnectionMode = 'mock' | 'real';
+export type ShopifyConnectionStatus = 'disconnected' | 'connected' | 'sync_failed' | 'synced';
+
+export type ShopifyConnection = {
+  id: string;
+  projectId: string;
+  shopDomain: string;
+  accessTokenMasked?: string | null;
+  mode: ShopifyConnectionMode;
+  status: ShopifyConnectionStatus;
+  lastSyncAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ConfigureShopifyRequest = {
+  shopDomain: string;
+  mode?: ShopifyConnectionMode;
+};
+
+export type ConfigureShopifyResponse = {
+  connection: ShopifyConnection;
+};
+
+export type ShopifySyncRequest = Record<string, never>;
+
+export type ShopifyImportedProduct = NormalizedProduct & {
+  id: string;
+  projectId?: string;
+};
+
+export type ShopifyProductPreview = {
+  externalId: string;
+  title: string;
+  vendor?: string;
+  productType?: string;
+  sku?: string;
+  price?: number;
+  availability?: NormalizedProduct['availability'];
+};
+
+export type ShopifySyncResponse = {
+  connection: ShopifyConnection;
+  importedCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  products: ShopifyImportedProduct[];
 };

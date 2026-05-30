@@ -156,6 +156,28 @@ const translations = {
       url: 'URL',
     },
   },
+  shopify: {
+    importTitle: 'Importer depuis Shopify',
+    connector: 'Connecteur Shopify',
+    mockMode: 'Mode mock Shopify',
+    mockHelp: "Shopify fonctionne en mode mock/local pour l'instant.",
+    shopDomain: 'Domaine boutique',
+    configure: 'Configurer Shopify',
+    configuring: 'Configuration Shopify en cours...',
+    configured: 'Connexion Shopify configurée.',
+    sync: 'Synchroniser les produits Shopify',
+    syncing: 'Synchronisation des produits Shopify en cours...',
+    connection: 'Connexion Shopify',
+    status: 'Statut Shopify',
+    syncDone: 'Synchronisation terminée',
+    imported: 'Produits importés',
+    updated: 'Produits mis à jour',
+    skipped: 'Produits ignorés',
+    realDisabled: 'Shopify réel désactivé',
+    invalidDomain: 'Domaine Shopify invalide',
+    noToken: 'Aucun token Shopify requis en mode mock',
+    pipelineHelp: 'Les produits Shopify importés peuvent être utilisés dans les prompts',
+  },
   prompts: {
     title: 'Prompts',
     generate: 'Générer des prompts',
@@ -254,6 +276,10 @@ const translations = {
     ACTION_CARDS_NO_SCORES: 'Aucun score disponible',
     AI_PROVIDER_DISABLED: 'Provider IA désactivé',
     AI_PROVIDER_NOT_CONFIGURED: 'Provider IA non configuré',
+    SHOPIFY_INVALID_DOMAIN: 'Domaine Shopify invalide',
+    SHOPIFY_REAL_SYNC_DISABLED: 'Shopify réel désactivé',
+    SHOPIFY_CONNECTION_NOT_FOUND: 'Connexion Shopify introuvable',
+    SHOPIFY_SYNC_FAILED: 'Échec de la synchronisation Shopify',
   },
 };
 
@@ -513,6 +539,25 @@ describe('ProductsComponent Phase 2 prompts', () => {
     cardsByProduct: { p1: [actionCard] },
     generatedCount: 1,
   };
+  const shopifyConnection = {
+    id: 'shopify-1',
+    projectId: 'project-1',
+    shopDomain: 'demo.myshopify.com',
+    accessTokenMasked: null,
+    mode: 'mock',
+    status: 'connected',
+    lastSyncAt: null,
+    lastError: null,
+    createdAt: '2026-05-29T10:00:00.000Z',
+    updatedAt: '2026-05-29T10:00:00.000Z',
+  };
+  const shopifySyncResponse = {
+    connection: { ...shopifyConnection, status: 'synced', lastSyncAt: '2026-05-29T10:01:00.000Z' },
+    importedCount: 5,
+    updatedCount: 0,
+    skippedCount: 0,
+    products: [{ ...products[0], source: 'shopify', externalId: 'gid://shopify/Product/1001' }],
+  };
   let apiMock: any;
   let lastAnalyzeProvider: string | undefined;
 
@@ -533,6 +578,9 @@ describe('ProductsComponent Phase 2 prompts', () => {
       computeScores: () => of(scoreResponse),
       generateActionCards: () => of(actionCardsResponse),
       updateActionCard: (_projectId: string, _id: string, payload: any) => of({ ...actionCard, status: payload.status }),
+      getShopifyStatus: () => of({ connection: { ...shopifyConnection, status: 'disconnected', shopDomain: '' } }),
+      configureShopify: () => of({ connection: shopifyConnection }),
+      syncShopify: () => of(shopifySyncResponse),
     };
 
     await TestBed.configureTestingModule({
@@ -568,6 +616,75 @@ describe('ProductsComponent Phase 2 prompts', () => {
     expect(fixture.componentInstance.selectedCountValue).toBe(5);
     expect(fixture.nativeElement.textContent).toContain('Seuls 5 produits maximum');
   });
+
+  it('shows Shopify mock import UI without token field', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Importer depuis Shopify');
+    expect(text).toContain('Connecteur Shopify');
+    expect(text).toContain('Mode mock Shopify');
+    expect(text).toContain('Domaine boutique');
+    expect(text).toContain('Configurer Shopify');
+    expect(text).toContain('Synchroniser les produits Shopify');
+    expect(text).toContain('Aucun token Shopify requis en mode mock');
+    expect(text).not.toContain('accessToken');
+    expect(text).not.toContain('SHOPIFY_API_TOKEN');
+  }));
+
+  it('configures and syncs Shopify mock products with visible counts', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.configureShopify();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.shopifyConfigLoading).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('Configuration Shopify en cours...');
+    expect(fixture.nativeElement.textContent).not.toContain('Connexion Shopify configurée.');
+
+    tick(999);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.shopifyConfigLoading).toBeTrue();
+
+    tick(1);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Connexion Shopify configurée.');
+
+    fixture.componentInstance.syncShopify();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.shopifySyncLoading).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('Synchronisation des produits Shopify en cours...');
+    expect(fixture.nativeElement.textContent).not.toContain('Synchronisation terminée');
+
+    tick(999);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.shopifySyncLoading).toBeTrue();
+
+    tick(1);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Synchronisation terminée');
+    expect(fixture.nativeElement.textContent).toContain('Produits importés');
+    expect(fixture.nativeElement.textContent).toContain('5');
+    expect(fixture.componentInstance.shopifySyncResult?.importedCount).toBe(5);
+  }));
+
+  it('translates SHOPIFY_INVALID_DOMAIN', fakeAsync(() => {
+    apiMock.configureShopify = () => throwError(() => ({ error: { code: 'SHOPIFY_INVALID_DOMAIN' } }));
+    const fixture = TestBed.createComponent(ProductsComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.componentInstance.configureShopify();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Configuration Shopify en cours...');
+    expect(fixture.nativeElement.textContent).not.toContain('Domaine Shopify invalide');
+    tick(1000);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Domaine Shopify invalide');
+  }));
 
   it('keeps generation loading visible briefly and then shows grouped prompts', fakeAsync(() => {
     const fixture = TestBed.createComponent(ProductsComponent);

@@ -232,6 +232,28 @@
       "url": "URL"
     }
   },
+  "shopify": {
+    "importTitle": "Import from Shopify",
+    "connector": "Shopify connector",
+    "mockMode": "Shopify mock mode",
+    "mockHelp": "Shopify runs in local/mock mode for now.",
+    "shopDomain": "Shop domain",
+    "configure": "Configure Shopify",
+    "configuring": "Configuring Shopify...",
+    "configured": "Shopify connection configured.",
+    "sync": "Sync Shopify products",
+    "syncing": "Syncing Shopify products...",
+    "connection": "Shopify connection",
+    "status": "Shopify status",
+    "syncDone": "Sync completed",
+    "imported": "Products imported",
+    "updated": "Products updated",
+    "skipped": "Products skipped",
+    "realDisabled": "Real Shopify disabled",
+    "invalidDomain": "Invalid Shopify domain",
+    "noToken": "No Shopify token required in mock mode",
+    "pipelineHelp": "Imported Shopify products can be used in prompts"
+  },
   "errors": {
     "CSV_INVALID_FILE_TYPE": "Invalid file type. Please use a CSV file.",
     "CSV_FILE_REQUIRED": "Select a CSV file before starting the analysis.",
@@ -261,7 +283,11 @@
     "AI_PROVIDER_DISABLED": "AI provider disabled",
     "AI_PROVIDER_NOT_CONFIGURED": "AI provider not configured",
     "AI_PROVIDER_REQUEST_FAILED": "Provider request failed",
-    "AI_PROVIDER_TIMEOUT": "AI provider timeout"
+    "AI_PROVIDER_TIMEOUT": "AI provider timeout",
+    "SHOPIFY_INVALID_DOMAIN": "Invalid Shopify domain",
+    "SHOPIFY_REAL_SYNC_DISABLED": "Real Shopify disabled",
+    "SHOPIFY_CONNECTION_NOT_FOUND": "Shopify connection not found",
+    "SHOPIFY_SYNC_FAILED": "Shopify sync failed"
   },
   "prompts": {
     "title": "Prompts",

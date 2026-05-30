@@ -23,6 +23,7 @@ model Project {
   promptRuns      PromptRun[]
   visibilityScores VisibilityScore[]
   actionCards     ActionCard[]
+  shopifyConnection ShopifyConnection?
 }
 
 
@@ -181,4 +182,21 @@ model ActionCard {
   @@index([projectId, status])
   @@index([projectId, productId])
   @@index([projectId, category])
+}
+
+model ShopifyConnection {
+  id                String   @id @default(cuid())
+  projectId         String   @unique
+  shopDomain        String
+  accessTokenMasked String?
+  mode              String   @default("mock")
+  status            String   @default("connected")
+  lastSyncAt        DateTime?
+  lastError         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, status])
+  @@index([shopDomain])
 }
