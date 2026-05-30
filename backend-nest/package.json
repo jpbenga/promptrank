@@ -7,7 +7,7 @@
     "build": "nest build",
     "test": "pnpm test:unit && pnpm test:integration",
     "test:unit": "jest src --runInBand",
-    "test:integration": "jest test/phase1.integration.spec.ts test/phase2.prompts.integration.spec.ts test/phase3.prompt-runs.integration.spec.ts test/phase4.visibility-scores.integration.spec.ts test/phase5.action-cards.integration.spec.ts test/phase6.ai-providers.integration.spec.ts --runInBand",
+    "test:integration": "jest test/phase1.integration.spec.ts test/phase2.prompts.integration.spec.ts test/phase3.prompt-runs.integration.spec.ts test/phase4.visibility-scores.integration.spec.ts test/phase5.action-cards.integration.spec.ts test/phase6.ai-providers.integration.spec.ts test/phase7.shopify.integration.spec.ts --runInBand",
     "lint": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "set -a; [ -f ../.env ] && . ../.env; [ -f .env ] && . .env; set +a; prisma generate",
     "prisma:migrate": "set -a; [ -f ../.env ] && . ../.env; [ -f .env ] && . .env; set +a; prisma migrate dev"

@@ -1,4 +1,4 @@
-# PromptRank - Phase 6 AI provider abstraction
+# PromptRank - Phase 7A Shopify mock connector
 
 ## État des phases
 - Phase 1 — CSV import / mapping / produits normalisés : validée.
@@ -6,9 +6,10 @@
 - Phase 3 — Analyse simulée : validée.
 - Phase 4 — Scoring de visibilité : validée.
 - Phase 5 — Recommandations / action cards : validée.
-- Phase 6 — Abstraction providers IA : préparée, mock par défaut, OpenAI optionnel désactivé par défaut.
+- Phase 6 — Abstraction providers IA : validée, mock par défaut, OpenAI optionnel désactivé par défaut.
+- Phase 7A — Connecteur Shopify mock : préparé, import produit mock local, aucun appel Shopify réel par défaut.
 
-Le projet fonctionne encore sans API IA réelle. Le provider `mock` reste le chemin par défaut, et OpenAI ne peut être appelé que si le backend est explicitement configuré avec `AI_REAL_PROVIDERS_ENABLED=true` et `OPENAI_API_KEY`. `pnpm verify` couvre les tests principaux, tandis que les E2E complets restent hors critère bloquant pour l’instant.
+Le projet fonctionne encore sans API IA réelle et sans appel Shopify réel par défaut. Le provider IA `mock` reste le chemin par défaut, OpenAI ne peut être appelé que si le backend est explicitement configuré avec `AI_REAL_PROVIDERS_ENABLED=true` et `OPENAI_API_KEY`, et Shopify reste en `SHOPIFY_SYNC_MODE=mock` tant que `SHOPIFY_REAL_SYNC_ENABLED` n’est pas activé. `pnpm verify` couvre les tests principaux, tandis que les E2E complets restent hors critère bloquant pour l’instant.
 
 ## Versions stables/LTS
 - Node.js 22 LTS
@@ -49,7 +50,7 @@ Commandes utiles :
 pnpm test              # tests API unitaires + intégration DB, puis tests Angular
 pnpm test:api          # prépare la DB de test, puis lance unitaires + intégration backend
 pnpm test:web          # tests Angular/Karma
-pnpm test:integration  # prépare la DB de test, puis lance l'intégration API Phases 1 à 5
+pnpm test:integration  # prépare la DB de test, puis lance l'intégration API Phases 1 à 7A
 pnpm test:e2e          # Playwright, nécessite pnpm dev déjà lancé
 pnpm lint
 pnpm build
@@ -118,6 +119,15 @@ Variables backend:
 - `AI_MAX_PROMPTS_PER_RUN=25`: limite de prompts par analyse.
 
 Les tests mockent les providers et ne font aucun appel réseau réel.
+
+## Configuration Shopify
+Variables backend:
+- `SHOPIFY_SYNC_MODE=mock`: mode utilisé pour la synchronisation Shopify locale.
+- `SHOPIFY_REAL_SYNC_ENABLED=false`: garde-fou global. Tant que cette valeur n’est pas `true`, aucun appel Shopify réel n’est autorisé.
+- `SHOPIFY_API_VERSION=2025-10`: version API prévue pour une future intégration réelle.
+- `SHOPIFY_REQUEST_TIMEOUT_MS=15000`: timeout prévu pour une future intégration réelle.
+
+Phase 7A ne demande aucun token Shopify côté frontend et ne stocke aucun token brut. Les tests utilisent le client mock local et ne font aucun appel Shopify ou Internet.
 
 ## Redis (statut réel)
 Redis est volontairement hors périmètre Phase 1. Il sera introduit plus tard si besoin pour des jobs async.
@@ -273,15 +283,53 @@ Règles:
 - timeout: `AI_PROVIDER_TIMEOUT` ;
 - erreur provider: `AI_PROVIDER_REQUEST_FAILED`.
 
-OpenAI est préparé avec `fetch` natif, mais aucun appel réel n’est requis pour lancer l’application ou `pnpm verify`. Gemini, Perplexity, scraping, Shopify, billing et scoring IA avancé restent hors périmètre.
+OpenAI est préparé avec `fetch` natif, mais aucun appel réel n’est requis pour lancer l’application ou `pnpm verify`. Gemini, Perplexity, scraping, billing et scoring IA avancé restent hors périmètre.
 
 Tests Phase 6:
 - unitaires backend: orchestration provider, OpenAI désactivé/non configuré, timeout, erreurs, absence de logs de clé ;
 - intégration backend: `backend-nest/test/phase6.ai-providers.integration.spec.ts`, inclus dans `pnpm test:integration` et `pnpm verify`;
 - Angular: choix provider, provider mock par défaut, provider envoyé à l’API, erreurs traduites et absence de champ clé API.
 
+## Phase 7A — Connecteur Shopify mock
+
+Flow visé: Shopify mock → produits normalisés → prompts → analyse → scores → action cards.
+
+La Phase 7A prépare l’architecture Shopify sans OAuth complet, sans webhooks, sans synchronisation automatique planifiée, sans publication ou modification de produits Shopify, et sans billing. Le CSV reste supporté et inchangé.
+
+Comportement:
+- l’utilisateur configure une connexion Shopify mockée par projet;
+- la synchronisation utilise `MockShopifyClient`, déterministe et local;
+- les produits Shopify mockés sont normalisés dans `Product` avec `source=shopify`;
+- les champs utiles sont conservés: SKU, marque/vendor, catégorie/product_type, prix, devise, disponibilité, stock, URL, images, tags, GTIN et `rawSource`;
+- les produits importés sont compatibles avec les Phases 2 à 6.
+
+Endpoints:
+- `POST /projects/:projectId/shopify/config`
+- `GET /projects/:projectId/shopify/status`
+- `POST /projects/:projectId/shopify/sync`
+
+Exemple config:
+```json
+{
+  "shopDomain": "demo.myshopify.com",
+  "mode": "mock"
+}
+```
+
+Erreurs structurées:
+- `PROJECT_NOT_FOUND`
+- `SHOPIFY_INVALID_DOMAIN`
+- `SHOPIFY_REAL_SYNC_DISABLED`
+- `SHOPIFY_CONNECTION_NOT_FOUND`
+- `SHOPIFY_SYNC_FAILED`
+
+Tests Phase 7A:
+- unitaires backend: validation domaine, config mock, refus du mode réel désactivé, client mock, normalisation, création/mise à jour produits et absence de token brut;
+- intégration backend: `backend-nest/test/phase7.shopify.integration.spec.ts`, inclus dans `pnpm test:integration` et `pnpm verify`;
+- Angular: section Shopify, mode mock, formulaire domaine, actions config/sync, compteurs et erreur traduite.
+
 ## Dettes techniques connues
-- Renforcer les E2E complets Phase 2 / Phase 3 / Phase 4 / Phase 5 / Phase 6.
+- Renforcer les E2E complets Phase 2 / Phase 3 / Phase 4 / Phase 5 / Phase 6 / Phase 7A.
 - Surveiller la stratégie `shared-types/dist` : la stratégie actuelle est source-first, avec `dist` ignoré.
 - Améliorer progressivement la séparation frontend : `frontend-angular/src/app/app.component.ts` concentre beaucoup de logique applicative.
 - Garder le provider mock comme fallback obligatoire avant toute IA réelle.

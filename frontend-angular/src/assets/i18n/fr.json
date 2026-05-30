@@ -232,6 +232,28 @@
       "url": "URL"
     }
   },
+  "shopify": {
+    "importTitle": "Importer depuis Shopify",
+    "connector": "Connecteur Shopify",
+    "mockMode": "Mode mock Shopify",
+    "mockHelp": "Shopify fonctionne en mode mock/local pour l'instant.",
+    "shopDomain": "Domaine boutique",
+    "configure": "Configurer Shopify",
+    "configuring": "Configuration Shopify en cours...",
+    "configured": "Connexion Shopify configurée.",
+    "sync": "Synchroniser les produits Shopify",
+    "syncing": "Synchronisation des produits Shopify en cours...",
+    "connection": "Connexion Shopify",
+    "status": "Statut Shopify",
+    "syncDone": "Synchronisation terminée",
+    "imported": "Produits importés",
+    "updated": "Produits mis à jour",
+    "skipped": "Produits ignorés",
+    "realDisabled": "Shopify réel désactivé",
+    "invalidDomain": "Domaine Shopify invalide",
+    "noToken": "Aucun token Shopify requis en mode mock",
+    "pipelineHelp": "Les produits Shopify importés peuvent être utilisés dans les prompts"
+  },
   "errors": {
     "CSV_INVALID_FILE_TYPE": "Type de fichier invalide. Utilisez un fichier CSV.",
     "CSV_FILE_REQUIRED": "Sélectionnez un fichier CSV avant de lancer l'analyse.",
@@ -261,7 +283,11 @@
     "AI_PROVIDER_DISABLED": "Provider IA désactivé",
     "AI_PROVIDER_NOT_CONFIGURED": "Provider IA non configuré",
     "AI_PROVIDER_REQUEST_FAILED": "Requête provider échouée",
-    "AI_PROVIDER_TIMEOUT": "Timeout provider IA"
+    "AI_PROVIDER_TIMEOUT": "Timeout provider IA",
+    "SHOPIFY_INVALID_DOMAIN": "Domaine Shopify invalide",
+    "SHOPIFY_REAL_SYNC_DISABLED": "Shopify réel désactivé",
+    "SHOPIFY_CONNECTION_NOT_FOUND": "Connexion Shopify introuvable",
+    "SHOPIFY_SYNC_FAILED": "Échec de la synchronisation Shopify"
   },
   "prompts": {
     "title": "Prompts",

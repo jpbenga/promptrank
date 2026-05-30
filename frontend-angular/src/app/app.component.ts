@@ -5,7 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute, Router, pro
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 
-import type { ActionCard, ActionCardStatus, AiProvider, AnalyzePromptsResponse, ComputeScoresResponse, GenerateActionCardsResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, ProductVisibilityScore, ProjectVisibilityScore, PromptRun, UpdateActionCardRequest, UpdatePromptRequest, VisibilityScore } from '@promptrank/shared-types';
+import type { ActionCard, ActionCardStatus, AiProvider, AnalyzePromptsResponse, ComputeScoresResponse, GenerateActionCardsResponse, GeneratePromptsRequest, GeneratePromptsResponse, ProductPrompt, ProductVisibilityScore, ProjectVisibilityScore, PromptRun, ShopifyConnection, ShopifySyncResponse, UpdateActionCardRequest, UpdatePromptRequest, VisibilityScore } from '@promptrank/shared-types';
 type ApiError = { code?: string; message?: string };
 const API_URL = 'http://localhost:3000';
 const CSV_MAX_FILE_SIZE_MB = 5;
@@ -37,6 +37,10 @@ export class ErrorI18nService {
     AI_PROVIDER_NOT_CONFIGURED: 'errors.AI_PROVIDER_NOT_CONFIGURED',
     AI_PROVIDER_REQUEST_FAILED: 'errors.AI_PROVIDER_REQUEST_FAILED',
     AI_PROVIDER_TIMEOUT: 'errors.AI_PROVIDER_TIMEOUT',
+    SHOPIFY_INVALID_DOMAIN: 'errors.SHOPIFY_INVALID_DOMAIN',
+    SHOPIFY_REAL_SYNC_DISABLED: 'errors.SHOPIFY_REAL_SYNC_DISABLED',
+    SHOPIFY_CONNECTION_NOT_FOUND: 'errors.SHOPIFY_CONNECTION_NOT_FOUND',
+    SHOPIFY_SYNC_FAILED: 'errors.SHOPIFY_SYNC_FAILED',
   };
 
   getKey(code?: string) { return this.map[code || ''] || 'errors.UNKNOWN'; }
@@ -64,6 +68,9 @@ export class ApiService {
   listActionCards(projectId: string) { return this.http.get<ActionCard[]>(`${API_URL}/projects/${projectId}/action-cards`); }
   listProductActionCards(projectId: string, productId: string) { return this.http.get<ActionCard[]>(`${API_URL}/projects/${projectId}/products/${productId}/action-cards`); }
   updateActionCard(projectId: string, actionCardId: string, payload: UpdateActionCardRequest) { return this.http.patch<ActionCard>(`${API_URL}/projects/${projectId}/action-cards/${actionCardId}`, payload); }
+  configureShopify(projectId: string, payload: { shopDomain: string; mode?: 'mock' | 'real' }) { return this.http.post<{ connection: ShopifyConnection }>(`${API_URL}/projects/${projectId}/shopify/config`, payload); }
+  getShopifyStatus(projectId: string) { return this.http.get<{ connection: ShopifyConnection }>(`${API_URL}/projects/${projectId}/shopify/status`); }
+  syncShopify(projectId: string) { return this.http.post<ShopifySyncResponse>(`${API_URL}/projects/${projectId}/shopify/sync`, {}); }
 }
 
 @Component({
@@ -693,6 +700,55 @@ export class MappingComponent {
         {{ error | translate }}
       </div>
 
+      <div class="rounded-2xl border border-teal-200 bg-teal-50 p-5 shadow-sm">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p class="text-sm font-semibold uppercase tracking-wide text-teal-700">{{ 'shopify.importTitle' | translate }}</p>
+            <h3 class="mt-1 text-xl font-bold text-slate-950">{{ 'shopify.connector' | translate }}</h3>
+            <p class="mt-2 text-sm leading-6 text-teal-900">{{ 'shopify.mockHelp' | translate }}</p>
+            <p class="mt-1 text-xs text-teal-800">{{ 'shopify.noToken' | translate }}</p>
+            <p class="mt-1 text-xs text-teal-800">{{ 'shopify.pipelineHelp' | translate }}</p>
+          </div>
+          <div class="rounded-xl border border-teal-100 bg-white p-4 lg:min-w-[22rem]">
+            <label for="shopify-domain" class="block text-sm font-semibold text-slate-950">{{ 'shopify.shopDomain' | translate }}</label>
+            <input id="shopify-domain" name="shopifyDomain" [(ngModel)]="shopifyDomain" placeholder="demo.myshopify.com" [disabled]="shopifyConfigLoading || shopifySyncLoading" class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/30" />
+            <p class="mt-2 text-xs font-medium text-teal-800">{{ 'shopify.mockMode' | translate }}</p>
+            <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+              <button type="button" (click)="configureShopify()" [disabled]="shopifyConfigLoading || shopifySyncLoading" class="inline-flex items-center justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-teal-300 hover:bg-teal-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">
+                <span class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-teal-200 border-t-teal-700" *ngIf="shopifyConfigLoading"></span>
+                {{ (shopifyConfigLoading ? 'shopify.configuring' : 'shopify.configure') | translate }}
+              </button>
+              <button type="button" (click)="syncShopify()" [disabled]="shopifyConfigLoading || shopifySyncLoading" class="inline-flex items-center justify-center rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300">
+                <span class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" *ngIf="shopifySyncLoading"></span>
+                {{ (shopifySyncLoading ? 'shopify.syncing' : 'shopify.sync') | translate }}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-xl border border-teal-100 bg-white p-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">{{ 'shopify.connection' | translate }}</p>
+            <p class="mt-1 font-semibold text-slate-950">{{ shopifyConnection?.shopDomain || ('states.notAvailable' | translate) }}</p>
+          </div>
+          <div class="rounded-xl border border-teal-100 bg-white p-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">{{ 'shopify.status' | translate }}</p>
+            <p class="mt-1 font-semibold text-slate-950">{{ shopifyConnection?.status || 'disconnected' }}</p>
+          </div>
+          <div class="rounded-xl border border-teal-100 bg-white p-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">{{ 'shopify.imported' | translate }}</p>
+            <p class="mt-1 font-semibold text-slate-950">{{ shopifySyncResult?.importedCount ?? 0 }}</p>
+          </div>
+          <div class="rounded-xl border border-teal-100 bg-white p-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">{{ 'shopify.updated' | translate }} / {{ 'shopify.skipped' | translate }}</p>
+            <p class="mt-1 font-semibold text-slate-950">{{ shopifySyncResult?.updatedCount ?? 0 }} / {{ shopifySyncResult?.skippedCount ?? 0 }}</p>
+          </div>
+        </div>
+        <p class="mt-3 text-sm text-blue-700" *ngIf="shopifyConfigLoading">{{ 'shopify.configuring' | translate }}</p>
+        <p class="mt-3 text-sm text-blue-700" *ngIf="shopifySyncLoading">{{ 'shopify.syncing' | translate }}</p>
+        <p class="mt-3 text-sm text-green-700" *ngIf="shopifySuccess">{{ shopifySuccess | translate }}</p>
+        <p class="mt-3 text-sm text-red-700" *ngIf="shopifyError">{{ shopifyError | translate }}</p>
+      </div>
+
       <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900" *ngIf="!loading && !error && products.length === 0">
         <p class="font-semibold">{{ 'states.emptyTitle' | translate }}</p>
         <p class="mt-1">{{ 'products.empty' | translate }}</p>
@@ -1005,13 +1061,26 @@ export class ProductsComponent {
   generatedActionCardsCount = 0;
   actionCardUpdating: Record<string, ActionCardStatus | ''> = {};
   actionCardFeedback: Record<string, string> = {};
+  shopifyDomain = 'demo.myshopify.com';
+  shopifyConnection: ShopifyConnection | null = null;
+  shopifySyncResult: ShopifySyncResponse | null = null;
+  shopifyConfigLoading = false;
+  shopifySyncLoading = false;
+  shopifyError = '';
+  shopifySuccess = '';
 
   private readonly minGenerateLoadingMs = 900;
   private readonly minAnalyzeLoadingMs = 1000;
   private readonly minScoreLoadingMs = 1000;
   private readonly minActionCardsLoadingMs = 1000;
+  private readonly minShopifyLoadingMs = 1000;
 
   ngOnInit() {
+    this.loadShopifyStatus();
+    this.refreshProducts();
+  }
+
+  private refreshProducts() {
     this.api.listProducts(this.projectId).subscribe({
       next: r => {
         this.products = r;
@@ -1020,6 +1089,61 @@ export class ProductsComponent {
       error: (e: HttpErrorResponse) => {
         this.error = this.errs.getKey((e.error as ApiError)?.code);
         this.loading = false;
+      },
+    });
+  }
+
+  private loadShopifyStatus() {
+    this.api.getShopifyStatus(this.projectId).subscribe({
+      next: response => {
+        this.shopifyConnection = response.connection;
+        if (response.connection.shopDomain) this.shopifyDomain = response.connection.shopDomain;
+      },
+      error: () => undefined,
+    });
+  }
+
+  configureShopify() {
+    if (this.shopifyConfigLoading || this.shopifySyncLoading) return;
+    const startedAt = Date.now();
+    this.shopifyConfigLoading = true; this.shopifyError = ''; this.shopifySuccess = '';
+    this.api.configureShopify(this.projectId, { shopDomain: this.shopifyDomain, mode: 'mock' }).subscribe({
+      next: response => {
+        this.finishAfterMinimumDelay(startedAt, this.minShopifyLoadingMs, () => {
+          this.shopifyConnection = response.connection;
+          this.shopifyDomain = response.connection.shopDomain || this.shopifyDomain;
+          this.shopifySuccess = 'shopify.configured';
+          this.shopifyConfigLoading = false;
+        });
+      },
+      error: (e: HttpErrorResponse) => {
+        this.finishAfterMinimumDelay(startedAt, this.minShopifyLoadingMs, () => {
+          this.shopifyError = this.errs.getKey((e.error as ApiError)?.code);
+          this.shopifyConfigLoading = false;
+        });
+      },
+    });
+  }
+
+  syncShopify() {
+    if (this.shopifyConfigLoading || this.shopifySyncLoading) return;
+    const startedAt = Date.now();
+    this.shopifySyncLoading = true; this.shopifyError = ''; this.shopifySuccess = '';
+    this.api.syncShopify(this.projectId).subscribe({
+      next: response => {
+        this.finishAfterMinimumDelay(startedAt, this.minShopifyLoadingMs, () => {
+          this.shopifySyncResult = response;
+          this.shopifyConnection = response.connection;
+          this.shopifySuccess = 'shopify.syncDone';
+          this.shopifySyncLoading = false;
+          this.refreshProducts();
+        });
+      },
+      error: (e: HttpErrorResponse) => {
+        this.finishAfterMinimumDelay(startedAt, this.minShopifyLoadingMs, () => {
+          this.shopifyError = this.errs.getKey((e.error as ApiError)?.code);
+          this.shopifySyncLoading = false;
+        });
       },
     });
   }
